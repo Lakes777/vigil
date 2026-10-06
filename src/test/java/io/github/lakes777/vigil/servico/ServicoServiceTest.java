@@ -14,6 +14,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.github.lakes777.vigil.seguranca.FiltroDeEnderecos;
+
 /**
  * Testes de unidade: sem Spring e sem banco. O repositório é um objeto falso (Mockito),
  * entregue pelo construtor, do mesmo jeito que o Spring entrega o de verdade.
@@ -26,7 +28,7 @@ class ServicoServiceTest {
 	@BeforeEach
 	void preparar() {
 		repositorio = mock(ServicoRepository.class);
-		service = new ServicoService(repositorio);
+		service = new ServicoService(repositorio, new FiltroDeEnderecos(false));
 		when(repositorio.save(any())).thenAnswer(chamada -> chamada.getArgument(0));
 	}
 
@@ -38,6 +40,18 @@ class ServicoServiceTest {
 		assertThat(criado.url()).isEqualTo("https://exemplo.com");
 		assertThat(criado.intervaloSegundos()).isEqualTo(300);
 		assertThat(criado.ativo()).isTrue();
+	}
+
+	@Test
+	void criarRecusaEnderecoInternoSemSalvar() {
+		for (String url : new String[] {"http://localhost:5432", "http://169.254.169.254/latest/meta-data/",
+				"http://192.168.0.1/admin", "http://[::1]:8080/"}) {
+			assertThatThrownBy(() -> service.criar(new ServicoEntrada("X", url, null, null)))
+					.as(url)
+					.isInstanceOf(UrlInvalidaException.class)
+					.hasMessage("endereços internos (localhost, rede privada) não podem ser monitorados");
+		}
+		verify(repositorio, never()).save(any());
 	}
 
 	@Test

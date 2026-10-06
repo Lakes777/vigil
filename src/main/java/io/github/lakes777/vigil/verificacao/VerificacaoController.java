@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
@@ -18,9 +19,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class VerificacaoController {
 
 	private final Verificador verificador;
+	private final LimiteManual limite;
 
-	public VerificacaoController(Verificador verificador) {
+	public VerificacaoController(Verificador verificador, LimiteManual limite) {
 		this.verificador = verificador;
+		this.limite = limite;
 	}
 
 	@GetMapping("/verificacoes")
@@ -31,8 +34,10 @@ public class VerificacaoController {
 	}
 
 	@PostMapping("/verificar")
-	@Operation(summary = "Verifica o serviço agora, sem esperar o intervalo")
+	@SecurityRequirement(name = "chave")
+	@Operation(summary = "Verifica o serviço agora, sem esperar o intervalo (uma vez a cada 10 s por serviço)")
 	public VerificacaoResposta verificarAgora(@PathVariable Long id) {
+		limite.liberar(id);
 		return verificador.verificarAgora(id);
 	}
 

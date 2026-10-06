@@ -1,11 +1,14 @@
 package io.github.lakes777.vigil.verificacao;
 
+import static io.github.lakes777.vigil.Admin.comChave;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -56,6 +60,9 @@ class VerificadorTest {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	@Value("${vigil.admin.chave}")
+	private String chave;
 
 	@BeforeEach
 	void preparar() {
@@ -160,7 +167,7 @@ class VerificadorTest {
 	void verificarAgoraPelaApi() throws Exception {
 		Servico servico = cadastrar("Hanami", "/ok", false);
 
-		mvc.perform(MockMvcRequestBuilders.post("/api/servicos/" + servico.getId() + "/verificar"))
+		mvc.perform(MockMvcRequestBuilders.post("/api/servicos/" + servico.getId() + "/verificar").with(comChave(chave)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.noAr").value(true))
 				.andExpect(jsonPath("$.codigoHttp").value(200));
@@ -171,8 +178,25 @@ class VerificadorTest {
 	}
 
 	@Test
+	void verificarAgoraTemLimitePorServico() throws Exception {
+		Servico hanami = cadastrar("Hanami", "/ok", true);
+		Servico encore = cadastrar("Encore", "/ok", true);
+		String rota = "/api/servicos/" + hanami.getId() + "/verificar";
+
+		mvc.perform(MockMvcRequestBuilders.post(rota).with(comChave(chave))).andExpect(status().isOk());
+		mvc.perform(MockMvcRequestBuilders.post(rota).with(comChave(chave)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().string("Retry-After", matchesPattern("([1-9]|10)")))
+				.andExpect(jsonPath("$.title").value("Muitas verificações"));
+		mvc.perform(MockMvcRequestBuilders.post("/api/servicos/" + encore.getId() + "/verificar").with(comChave(chave)))
+				.andExpect(status().isOk());
+
+		assertThat(verificacoes.count()).isEqualTo(2);
+	}
+
+	@Test
 	void servicoInexistenteDa404() throws Exception {
-		mvc.perform(MockMvcRequestBuilders.post("/api/servicos/999999/verificar")).andExpect(status().isNotFound());
+		mvc.perform(MockMvcRequestBuilders.post("/api/servicos/999999/verificar").with(comChave(chave))).andExpect(status().isNotFound());
 		mvc.perform(MockMvcRequestBuilders.get("/api/servicos/999999/verificacoes")).andExpect(status().isNotFound());
 	}
 
@@ -181,7 +205,7 @@ class VerificadorTest {
 		Servico servico = cadastrar("Tidy", "/ok", true);
 		verificador.verificarAgora(servico.getId());
 
-		mvc.perform(MockMvcRequestBuilders.delete("/api/servicos/" + servico.getId())).andExpect(status().isNoContent());
+		mvc.perform(MockMvcRequestBuilders.delete("/api/servicos/" + servico.getId()).with(comChave(chave))).andExpect(status().isNoContent());
 
 		assertThat(verificacoes.count()).isZero();
 	}

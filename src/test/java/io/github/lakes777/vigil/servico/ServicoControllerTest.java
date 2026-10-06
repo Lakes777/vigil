@@ -1,5 +1,6 @@
 package io.github.lakes777.vigil.servico;
 
+import static io.github.lakes777.vigil.Admin.comChave;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.endsWith;
@@ -17,6 +18,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -45,13 +47,16 @@ class ServicoControllerTest {
 	@Autowired
 	private JdbcTemplate jdbc;
 
+	@Value("${vigil.admin.chave}")
+	private String chave;
+
 	@BeforeEach
 	void limparBanco() {
 		repositorio.deleteAll();
 	}
 
 	private ResultActions criar(String json) throws Exception {
-		return mvc.perform(post("/api/servicos").contentType(MediaType.APPLICATION_JSON).content(json));
+		return mvc.perform(post("/api/servicos").with(comChave(chave)).contentType(MediaType.APPLICATION_JSON).content(json));
 	}
 
 	private long criarERetornarId(String nome) throws Exception {
@@ -88,7 +93,7 @@ class ServicoControllerTest {
 	void buscaEditaERemove() throws Exception {
 		long id = criarERetornarId("Hanami");
 
-		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"Hanami\",\"url\":\"https://novo.exemplo.com\",\"intervaloSegundos\":600,\"ativo\":false}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.url").value("https://novo.exemplo.com"));
@@ -97,7 +102,7 @@ class ServicoControllerTest {
 				.andExpect(jsonPath("$.intervaloSegundos").value(600))
 				.andExpect(jsonPath("$.ativo").value(false));
 
-		mvc.perform(delete("/api/servicos/" + id)).andExpect(status().isNoContent());
+		mvc.perform(delete("/api/servicos/" + id).with(comChave(chave))).andExpect(status().isNoContent());
 		mvc.perform(get("/api/servicos/" + id))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.title").value("Serviço não encontrado"));
@@ -107,7 +112,7 @@ class ServicoControllerTest {
 	void editarComONomeDeleMesmoComOutraCaixaFunciona() throws Exception {
 		long id = criarERetornarId("Hanami");
 
-		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"HANAMI\",\"url\":\"https://exemplo.com\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.nome").value("HANAMI"));
@@ -119,7 +124,7 @@ class ServicoControllerTest {
 				.andReturn().getResponse().getContentAsString();
 		long id = ((Number) JsonPath.read(corpo, "$.id")).longValue();
 
-		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"Hanami\",\"url\":\"https://b.com\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.url").value("https://b.com"))
@@ -132,7 +137,7 @@ class ServicoControllerTest {
 		long id = criarERetornarId("Hanami");
 		jdbc.update("update servico set proxima_verificacao = now() + interval '1 hour' where id = ?", id);
 
-		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"Hanami\",\"url\":\"https://nova.exemplo.com\"}"))
 				.andExpect(status().isOk());
 
@@ -153,7 +158,7 @@ class ServicoControllerTest {
 		criarERetornarId("Encore");
 		long id = criarERetornarId("Hanami");
 
-		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"ENCORE\",\"url\":\"https://exemplo.com\"}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.title").value("Nome em uso"));
@@ -162,7 +167,7 @@ class ServicoControllerTest {
 	@Test
 	void getEPutDeIdInexistenteDao404() throws Exception {
 		mvc.perform(get("/api/servicos/999999")).andExpect(status().isNotFound());
-		mvc.perform(put("/api/servicos/999999").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(put("/api/servicos/999999").with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"nome\":\"X\",\"url\":\"https://x.com\"}"))
 				.andExpect(status().isNotFound());
 	}
@@ -224,7 +229,7 @@ class ServicoControllerTest {
 
 	@Test
 	void removerInexistenteDa404() throws Exception {
-		mvc.perform(delete("/api/servicos/999999")).andExpect(status().isNotFound());
+		mvc.perform(delete("/api/servicos/999999").with(comChave(chave))).andExpect(status().isNotFound());
 	}
 
 	@Test

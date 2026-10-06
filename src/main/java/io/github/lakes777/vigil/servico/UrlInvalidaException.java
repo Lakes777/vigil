@@ -6,4 +6,8 @@ public class UrlInvalidaException extends RuntimeException {
 		super("a URL tem caracteres inválidos ou não tem um endereço de site");
 	}
 
+	public UrlInvalidaException(String motivo) {
+		super(motivo);
+	}
+
 }

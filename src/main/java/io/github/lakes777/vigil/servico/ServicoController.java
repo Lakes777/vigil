@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -45,6 +46,7 @@ public class ServicoController {
 
 	@PostMapping
 	@Operation(summary = "Cadastra um serviço")
+	@SecurityRequirement(name = "chave")
 	public ResponseEntity<ServicoResposta> criar(@Valid @RequestBody ServicoEntrada entrada) {
 		ServicoResposta criado = servicos.criar(entrada);
 		var endereco = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(criado.id()).toUri();
@@ -52,6 +54,7 @@ public class ServicoController {
 	}
 
 	@PutMapping("/{id}")
+	@SecurityRequirement(name = "chave")
 	@Operation(summary = "Edita um serviço (intervalo e ativo omitidos mantêm o valor atual)")
 	public ServicoResposta atualizar(@PathVariable Long id, @Valid @RequestBody ServicoEntrada entrada) {
 		return servicos.atualizar(id, entrada);
@@ -60,6 +63,7 @@ public class ServicoController {
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	@Operation(summary = "Remove um serviço")
+	@SecurityRequirement(name = "chave")
 	public void remover(@PathVariable Long id) {
 		servicos.remover(id);
 	}

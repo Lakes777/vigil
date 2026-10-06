@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.lakes777.vigil.seguranca.FiltroDeEnderecos;
+
 /**
  * As regras do cadastro. Não sabe nada de HTTP: recebe e devolve objetos Java.
  * O repositório chega pelo construtor (injeção de dependência): quem cria o
@@ -15,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServicoService {
 
 	private final ServicoRepository repositorio;
+	private final FiltroDeEnderecos filtro;
 
-	public ServicoService(ServicoRepository repositorio) {
+	public ServicoService(ServicoRepository repositorio, FiltroDeEnderecos filtro) {
 		this.repositorio = repositorio;
+		this.filtro = filtro;
 	}
 
 	@Transactional(readOnly = true)
@@ -62,13 +66,18 @@ public class ServicoService {
 	}
 
 	/** A anotação @Pattern só confere o formato geral; aqui vale a regra de quem vai acessar a URL. */
-	private static void validarUrl(String url) {
+	private void validarUrl(String url) {
+		String host;
 		try {
-			if (URI.create(url).getHost() == null) {
-				throw new UrlInvalidaException();
-			}
+			host = URI.create(url).getHost();
 		} catch (IllegalArgumentException erro) {
 			throw new UrlInvalidaException();
+		}
+		if (host == null) {
+			throw new UrlInvalidaException();
+		}
+		if (filtro.bloqueadoNoCadastro(host)) {
+			throw new UrlInvalidaException("endereços internos (localhost, rede privada) não podem ser monitorados");
 		}
 	}
 

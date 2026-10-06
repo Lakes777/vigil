@@ -21,6 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import io.github.lakes777.vigil.servico.NomeEmUsoException;
 import io.github.lakes777.vigil.servico.ServicoNaoEncontradoException;
 import io.github.lakes777.vigil.servico.UrlInvalidaException;
+import io.github.lakes777.vigil.verificacao.MuitasVerificacoesException;
 
 /**
  * Transforma exceções em respostas HTTP no formato padrão "problem detail" (RFC 9457):
@@ -57,6 +58,14 @@ public class TratadorDeErros extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
 	ProblemDetail alteradoAoMesmoTempo(ObjectOptimisticLockingFailureException erro) {
 		return problema(HttpStatus.CONFLICT, "Conflito", "O serviço foi alterado ou removido por outro pedido. Tente de novo.");
+	}
+
+	/** 429 com Retry-After: o cabeçalho padrão que diz em quantos segundos tentar de novo. */
+	@ExceptionHandler(MuitasVerificacoesException.class)
+	ResponseEntity<ProblemDetail> muitasVerificacoes(MuitasVerificacoesException erro) {
+		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+				.header(HttpHeaders.RETRY_AFTER, String.valueOf(erro.getSegundosRestantes()))
+				.body(problema(HttpStatus.TOO_MANY_REQUESTS, "Muitas verificações", erro.getMessage()));
 	}
 
 	/** Ex.: GET /api/servicos/abc, quando o id precisa ser número. */
