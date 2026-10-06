@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /**
  * O relógio do Vigil: a cada "tique" pergunta ao Verificador quem está pendente.
  * Cada serviço tem o próprio intervalo; o tique só define de quanto em quanto tempo
- * a fila é olhada. Desligado nos testes (vigil.verificacao.ligado=false).
+ * a fila é olhada. Também apaga o histórico antigo uma vez por dia. Desligado nos testes (vigil.verificacao.ligado=false).
  */
 @Component
 @ConditionalOnProperty(name = "vigil.verificacao.ligado", havingValue = "true", matchIfMissing = true)
@@ -29,6 +29,12 @@ public class Agendador {
 		if (verificados > 0) {
 			log.info("{} serviço(s) verificado(s)", verificados);
 		}
+	}
+
+	/** Todo dia às 4h30 de Brasília, mesmo num servidor em UTC. */
+	@Scheduled(cron = "${vigil.verificacao.limpeza:0 30 4 * * *}", zone = "America/Sao_Paulo")
+	public void limpar() {
+		log.info("{} verificação(ões) antiga(s) apagada(s)", verificador.apagarAntigas());
 	}
 
 }

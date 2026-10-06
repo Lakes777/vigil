@@ -10,7 +10,7 @@ API em Java com Spring Boot que verifica de tempos em tempos se os meus sites e 
 guarda o histórico de cada verificação e calcula a disponibilidade de cada serviço. Quando algo
 cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/bot-utilidades)).
 
-> Em construção. Pronto: cadastro de serviços e verificações periódicas. Próximo: disponibilidade em %.
+> Em construção. Pronto: cadastro, verificações periódicas e disponibilidade. Próximo: segurança.
 
 ## Tecnologias
 
@@ -50,6 +50,9 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 | `DELETE` | `/api/servicos/{id}` | Remove um serviço (e o histórico dele) |
 | `GET` | `/api/servicos/{id}/verificacoes?limite=50` | Últimas verificações, da mais recente (limite de 1 a 500) |
 | `POST` | `/api/servicos/{id}/verificar` | Verifica agora, sem esperar o intervalo |
+| `GET` | `/api/status` | Todos os serviços: situação atual e disponibilidade em 24 h, 7 e 30 dias |
+| `GET` | `/api/servicos/{id}/resumo` | O mesmo, de um serviço |
+| `GET` | `/api/servicos/{id}/quedas?dias=30` | Quedas da mais recente para a mais antiga (1 a 90 dias) |
 
 ```bash
 curl -X POST localhost:8080/api/servicos -H 'Content-Type: application/json' \
@@ -88,14 +91,37 @@ e a próxima verificação fica marcada para daqui a `intervaloSegundos`.
 Configurável em `application.properties`: `vigil.verificacao.tique`, `vigil.verificacao.tempo-limite`
 e `vigil.verificacao.ligado` (desligado nos testes).
 
+## Disponibilidade e quedas
+
+```json
+{"nome": "Hanami", "situacao": "NO_AR", "ultimaVerificacao": "2026-10-06T18:41:02Z",
+ "ultimas24h": {"disponibilidade": 66.66, "verificacoes": 6, "falhas": 2, "tempoMedioMs": 318, "tempoP95Ms": 336},
+ "ultimos7d": {...}, "ultimos30d": {...}}
+```
+
+- **Disponibilidade** é a porcentagem de verificações no ar no período, **arredondada para baixo**:
+  19 999 de 20 000 aparece como 99,99%, nunca como 100% depois de uma queda.
+- **Tempo médio e p95** usam só as verificações no ar (um tempo esgotado de 10 s distorceria a média).
+  p95 = 95% das respostas foram mais rápidas que isso.
+- **Situação:** `NO_AR` ou `FORA` pela última verificação, `PAUSADO` ou `SEM_DADOS`.
+- **Quedas** são verificações seguidas fora do ar, com início, fim (ou `emAndamento`), duração,
+  quantas falhas e o motivo da primeira. Saem de uma consulta só, pela técnica de *gaps and
+  islands* com `row_number()`. Uma queda que começou antes do período pedido aparece inteira, e a
+  de um serviço pausado enquanto estava fora termina na última falha vista.
+- As contas são feitas no banco, em SQL puro (`JdbcClient`), numa consulta para todos os serviços.
+  O JPA fica para o cadastro.
+- O histórico é guardado por 90 dias (`vigil.verificacao.guardar-dias`); uma limpeza roda todo dia às 4h30 de Brasília.
+
 ## Organização
 
 ```
-servico/      Servico (entidade) · ServicoRepository (banco) · ServicoService (regras)
-              ServicoController (rotas HTTP) · ServicoEntrada/ServicoResposta (JSON)
-verificacao/  Sonda (acessa a URL e mede) · Verificador (quem verificar, grava o resultado)
-              Agendador (@Scheduled) · Verificacao (entidade) · VerificacaoController (rotas)
-erro/         TratadorDeErros (exceções -> respostas HTTP)
+servico/         Servico (entidade) · ServicoRepository (banco) · ServicoService (regras)
+                 ServicoController (rotas HTTP) · ServicoEntrada/ServicoResposta (JSON)
+verificacao/     Sonda (acessa a URL e mede) · Verificador (quem verificar, grava o resultado)
+                 Agendador (@Scheduled) · Verificacao (entidade) · VerificacaoController (rotas)
+disponibilidade/ DisponibilidadeRepository (SQL dos números e das quedas) · DisponibilidadeService
+                 DisponibilidadeController · Periodo, Queda, StatusServico (JSON)
+erro/            TratadorDeErros (exceções -> respostas HTTP)
 ```
 
 ## Próximos passos
@@ -103,10 +129,10 @@ erro/         TratadorDeErros (exceções -> respostas HTTP)
 - [x] Esqueleto: Spring Boot, Postgres, Flyway, CI
 - [x] Cadastro de serviços (criar, listar, editar, remover) com validação e Swagger
 - [x] Verificação periódica com histórico (tempo de resposta, código HTTP)
-- [ ] Disponibilidade em %, tempo médio e lista de quedas
+- [x] Disponibilidade em %, tempo médio e lista de quedas
 - [ ] Rotas de administração protegidas (Spring Security), bloqueio de endereços internos (localhost,
       rede privada, 169.254.169.254) e limite de uso do `POST /verificar`
 - [ ] Alertas pelo Telegram quando um serviço cai ou volta (só após 2 falhas seguidas: sites no plano
       grátis do Render dormem e a primeira visita passa dos 10 s)
-- [ ] Apagar verificações antigas (o histórico cresce ~290 linhas por serviço por dia)
+- [x] Apagar verificações antigas (guardadas por 90 dias)
 - [ ] Página pública de status e publicação com Docker

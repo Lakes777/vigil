@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.info.Info;
 
 @SpringBootApplication
 @EnableScheduling
-@OpenAPIDefinition(info = @Info(title = "Vigil", version = "0.3",
+@OpenAPIDefinition(info = @Info(title = "Vigil", version = "0.4",
 		description = "Monitor de status dos meus projetos: cadastro de serviços, verificações e disponibilidade."))
 public class VigilApplication {
 

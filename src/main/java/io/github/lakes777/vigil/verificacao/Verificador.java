@@ -1,5 +1,6 @@
 package io.github.lakes777.vigil.verificacao;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -7,6 +8,7 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -31,11 +33,14 @@ public class Verificador {
 	private final ServicoRepository servicos;
 	private final VerificacaoRepository verificacoes;
 	private final Sonda sonda;
+	private final Duration guardarPor;
 
-	public Verificador(ServicoRepository servicos, VerificacaoRepository verificacoes, Sonda sonda) {
+	public Verificador(ServicoRepository servicos, VerificacaoRepository verificacoes, Sonda sonda,
+			@Value("${vigil.verificacao.guardar-dias:90}") int guardarDias) {
 		this.servicos = servicos;
 		this.verificacoes = verificacoes;
 		this.sonda = sonda;
+		this.guardarPor = Duration.ofDays(guardarDias);
 	}
 
 	/**
@@ -62,6 +67,11 @@ public class Verificador {
 			// Apagado enquanto a Sonda acessava o site: a chave estrangeira barrou a gravação
 			throw new ServicoNaoEncontradoException(servicoId);
 		}
+	}
+
+	/** Apaga o histórico mais antigo que vigil.verificacao.guardar-dias. Devolve quantas apagou. */
+	public int apagarAntigas() {
+		return verificacoes.apagarAntesDe(Instant.now().minus(guardarPor));
 	}
 
 	@Transactional(readOnly = true)
