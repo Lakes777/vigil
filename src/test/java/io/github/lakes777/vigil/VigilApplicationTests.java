@@ -32,9 +32,14 @@ class VigilApplicationTests {
 	}
 
 	@Test
-	void flywayCriaATabelaDeServicos() {
-		Integer quantos = jdbc.queryForObject("select count(*) from servico", Integer.class);
-		assertThat(quantos).isZero();
+	void flywayAplicaTodasAsMigracoes() {
+		// Não depende do conteúdo da tabela: outros testes dividem o mesmo banco
+		Integer falhas = jdbc.queryForObject(
+				"select count(*) from flyway_schema_history where not success", Integer.class);
+		Integer tabelas = jdbc.queryForObject(
+				"select count(*) from information_schema.tables where table_name = 'servico'", Integer.class);
+		assertThat(falhas).isZero();
+		assertThat(tabelas).isEqualTo(1);
 	}
 
 }
