@@ -36,6 +36,9 @@ public class Servico {
 	@Column(name = "criado_em", nullable = false, updatable = false)
 	private Instant criadoEm;
 
+	@Column(name = "proxima_verificacao", nullable = false)
+	private Instant proximaVerificacao;
+
 	/** O JPA exige um construtor vazio para montar o objeto a partir do banco. */
 	protected Servico() {
 	}
@@ -49,6 +52,8 @@ public class Servico {
 		this.url = url;
 		this.intervaloSegundos = intervaloSegundos;
 		this.ativo = ativo;
+		// Serviço novo ou editado (talvez com outra URL): verificar logo
+		this.proximaVerificacao = Instant.now();
 	}
 
 	public Long getId() {
@@ -73,6 +78,10 @@ public class Servico {
 
 	public Instant getCriadoEm() {
 		return criadoEm;
+	}
+
+	public Instant getProximaVerificacao() {
+		return proximaVerificacao;
 	}
 
 }

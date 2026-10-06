@@ -1,5 +1,6 @@
 package io.github.lakes777.vigil.servico;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
@@ -11,6 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -37,6 +41,9 @@ class ServicoControllerTest {
 
 	@Autowired
 	private ServicoRepository repositorio;
+
+	@Autowired
+	private JdbcTemplate jdbc;
 
 	@BeforeEach
 	void limparBanco() {
@@ -118,6 +125,27 @@ class ServicoControllerTest {
 				.andExpect(jsonPath("$.url").value("https://b.com"))
 				.andExpect(jsonPath("$.intervaloSegundos").value(600))
 				.andExpect(jsonPath("$.ativo").value(false));
+	}
+
+	@Test
+	void editarColocaParaVerificarNaHora() throws Exception {
+		long id = criarERetornarId("Hanami");
+		jdbc.update("update servico set proxima_verificacao = now() + interval '1 hour' where id = ?", id);
+
+		mvc.perform(put("/api/servicos/" + id).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"nome\":\"Hanami\",\"url\":\"https://nova.exemplo.com\"}"))
+				.andExpect(status().isOk());
+
+		assertThat(repositorio.findById(id).orElseThrow().getProximaVerificacao()).isBeforeOrEqualTo(Instant.now());
+	}
+
+	@Test
+	void recusaUrlQueOJavaNaoConsegueAcessar() throws Exception {
+		criar("{\"nome\":\"X\",\"url\":\"https://site.com/a|b\"}")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.title").value("Dados inválidos"))
+				.andExpect(jsonPath("$.campos.url").value("a URL tem caracteres inválidos ou não tem um endereço de site"));
+		criar("{\"nome\":\"X\",\"url\":\"https://:8080/\"}").andExpect(status().isBadRequest());
 	}
 
 	@Test

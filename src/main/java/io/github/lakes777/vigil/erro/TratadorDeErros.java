@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import io.github.lakes777.vigil.servico.NomeEmUsoException;
 import io.github.lakes777.vigil.servico.ServicoNaoEncontradoException;
+import io.github.lakes777.vigil.servico.UrlInvalidaException;
 
 /**
  * Transforma exceções em respostas HTTP no formato padrão "problem detail" (RFC 9457):
@@ -36,6 +37,14 @@ public class TratadorDeErros extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(NomeEmUsoException.class)
 	ProblemDetail nomeEmUso(NomeEmUsoException erro) {
 		return problema(HttpStatus.CONFLICT, "Nome em uso", erro.getMessage());
+	}
+
+	/** Mesmo formato da validação das anotações, para quem usa a API tratar igual. */
+	@ExceptionHandler(UrlInvalidaException.class)
+	ProblemDetail urlInvalida(UrlInvalidaException erro) {
+		ProblemDetail corpo = problema(HttpStatus.BAD_REQUEST, "Dados inválidos", "Confira os campos indicados.");
+		corpo.setProperty("campos", Map.of("url", erro.getMessage()));
+		return corpo;
 	}
 
 	/** Dois pedidos com o mesmo nome ao mesmo tempo: a checagem passa nos dois, o índice do banco barra um. */
