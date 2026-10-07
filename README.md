@@ -10,7 +10,9 @@ API em Java com Spring Boot que verifica de tempos em tempos se os meus sites e 
 guarda o histórico de cada verificação e calcula a disponibilidade de cada serviço. Quando algo
 cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/bot-utilidades)).
 
-> Em construção. Pronto: cadastro, verificações, disponibilidade, segurança e avisos pelo Telegram. Próximo: página de status e publicação.
+**No ar:** https://147-15-40-173.sslip.io (página de status) · [API](https://147-15-40-173.sslip.io/docs)
+
+![Página de status do Vigil: cada serviço com a situação, a disponibilidade e uma barra por dia](docs/status.png)
 
 ## Tecnologias
 
@@ -19,7 +21,8 @@ cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/b
 - PostgreSQL com migrações pelo Flyway
 - Testes com JUnit 5, Mockito, Testcontainers (Postgres de verdade num contêiner) e WireMock (sites
   falsos: lentos, fora do ar, com erro, redirecionando para a rede interna)
-- GitHub Actions
+- Docker (imagem em duas etapas), Caddy (HTTPS automático) e uma VM da Oracle Cloud
+- GitHub Actions (testes e montagem da imagem)
 
 ## Como rodar
 
@@ -65,6 +68,7 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 | `GET` | `/api/servicos/{id}/verificacoes?limite=50` | Últimas verificações, da mais recente (limite de 1 a 500) |
 | `POST` | `/api/servicos/{id}/verificar` | Verifica agora, sem esperar o intervalo |
 | `GET` | `/api/status` | Todos os serviços: situação atual e disponibilidade em 24 h, 7 e 30 dias |
+| `GET` | `/api/status/dias?dias=30` | Disponibilidade de cada serviço por dia (horário de Brasília), contando hoje |
 | `GET` | `/api/servicos/{id}/resumo` | O mesmo, de um serviço |
 | `GET` | `/api/servicos/{id}/quedas?dias=30` | Quedas da mais recente para a mais antiga (1 a 90 dias) |
 
@@ -186,6 +190,59 @@ Vigil: Hanami voltou. Ficou fora por 12 min (desde 14:32 de 06/10).
   O JPA fica para o cadastro.
 - O histórico é guardado por 90 dias (`vigil.verificacao.guardar-dias`); uma limpeza roda todo dia às 4h30 de Brasília.
 
+## Página de status
+
+Em `/`, servida pelo próprio Spring (`src/main/resources/static`): HTML, CSS e JavaScript puros, sem
+framework. Busca `/api/status`, `/api/servicos` e `/api/status/dias` e se atualiza a cada minuto.
+
+- Uma barra por dia nos últimos 30 dias: verde a partir de 99% no ar, amarela a partir de 90%, vermelha abaixo.
+- Os dias são os do horário de Brasília (o SQL agrupa com `at time zone 'America/Sao_Paulo'`): uma
+  queda às 23h não vai para o "amanhã" do UTC.
+- Modo claro e escuro conforme o sistema; funciona no celular.
+- Os nomes entram na página como texto (`textContent`), nunca como HTML.
+
+## Publicação
+
+Roda numa VM grátis da Oracle Cloud (1 GB de memória, dividida com o
+[Sidekick](https://github.com/Lakes777/bot-utilidades)), com três contêineres (`deploy/compose.yaml`):
+
+| Contêiner | O que faz | Limite de memória |
+|---|---|---|
+| `banco` | Postgres 17, sem porta aberta para fora da VM | 160 MB |
+| `api` | o Vigil | 384 MB |
+| `caddy` | recebe na porta 443, pega e renova sozinho o certificado HTTPS (Let's Encrypt) | 64 MB |
+
+- **Imagem em duas etapas** (`Dockerfile`): a primeira compila com JDK e Maven, a segunda só tem o
+  JRE e o `.jar`, roda sem root. Os segredos ficam de fora (`.dockerignore`).
+- **Memória medida:** com as opções padrão a API chegava a 370 MB, colada no limite. Com
+  `MaxRAMPercentage=45`, SerialGC e só o compilador rápido do Java (`TieredStopAtLevel=1`), fica em ~190-250 MB.
+- **Banco na VM, e não no Neon:** o plano grátis do Neon tem limite de horas de computação e só
+  desliga o banco depois de 5 min sem uso. O Vigil grava a cada poucos minutos, então o manteria
+  ligado 24 h e gastaria o limite do mesmo projeto Neon dos meus outros sites.
+- **Domínio:** `147-15-40-173.sslip.io`, um serviço grátis que responde com o IP que está no próprio
+  nome. O certificado HTTPS precisa de um nome, não de um IP.
+- Logs com rotação (10 MB × 3 por contêiner) para não encher o disco.
+
+Publicar uma versão nova (monta a imagem aqui, envia pela conexão SSH e reinicia):
+
+```bash
+deploy/publicar.sh
+```
+
+Primeira vez na VM:
+
+1. Instalar o Docker: `sudo apt install docker.io docker-compose-v2` e `sudo usermod -aG docker ubuntu`.
+2. Abrir as portas 80 e 443 na Security List da VCN (painel da Oracle) e no firewall da VM (`iptables`).
+3. Criar `~/vigil/.env` (com `chmod 600`) com `DOMINIO`, `DB_SENHA`, `VIGIL_ADMIN_CHAVE`,
+   `TELEGRAM_TOKEN` e `TELEGRAM_CHAT_ID`. Esse arquivo nunca sai da VM.
+4. Rodar `deploy/publicar.sh`.
+
+Backup do banco:
+
+```bash
+ssh ubuntu@<ip> 'cd vigil && docker compose exec -T banco pg_dump -U vigil vigil' > vigil-backup.sql
+```
+
 ## Organização
 
 ```
@@ -195,11 +252,13 @@ verificacao/     Sonda (acessa a URL e mede) · Verificador (quem verificar, gra
                  Agendador (@Scheduled) · Verificacao (entidade) · VerificacaoController (rotas)
                  LimiteManual (uma verificação manual a cada 10 s)
 disponibilidade/ DisponibilidadeRepository (SQL dos números e das quedas) · DisponibilidadeService
-                 DisponibilidadeController · Periodo, Queda, StatusServico (JSON)
+                 DisponibilidadeController · Periodo, Queda, StatusServico, Dia (JSON)
 alerta/          Alertas (quando avisar) · AlertaRepository (estado no banco) · Telegram (envio)
 seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a chave)
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
+static/          index.html (página de status) · logo.svg
+deploy/          compose.yaml · Caddyfile · publicar.sh
 ```
 
 ## Próximos passos
@@ -213,4 +272,4 @@ erro/            TratadorDeErros (exceções -> respostas HTTP)
 - [x] Alertas pelo Telegram quando um serviço cai ou volta (só após 2 falhas seguidas: sites no plano
       grátis do Render dormem e a primeira visita passa dos 10 s)
 - [x] Apagar verificações antigas (guardadas por 90 dias)
-- [ ] Página pública de status e publicação com Docker
+- [x] Página pública de status e publicação com Docker
