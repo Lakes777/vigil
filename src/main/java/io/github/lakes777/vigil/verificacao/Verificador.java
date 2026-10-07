@@ -14,6 +14,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.lakes777.vigil.alerta.Alertas;
 import io.github.lakes777.vigil.servico.Servico;
 import io.github.lakes777.vigil.servico.ServicoNaoEncontradoException;
 import io.github.lakes777.vigil.servico.ServicoRepository;
@@ -33,13 +34,15 @@ public class Verificador {
 	private final ServicoRepository servicos;
 	private final VerificacaoRepository verificacoes;
 	private final Sonda sonda;
+	private final Alertas alertas;
 	private final Duration guardarPor;
 
-	public Verificador(ServicoRepository servicos, VerificacaoRepository verificacoes, Sonda sonda,
+	public Verificador(ServicoRepository servicos, VerificacaoRepository verificacoes, Sonda sonda, Alertas alertas,
 			@Value("${vigil.verificacao.guardar-dias:90}") int guardarDias) {
 		this.servicos = servicos;
 		this.verificacoes = verificacoes;
 		this.sonda = sonda;
+		this.alertas = alertas;
 		this.guardarPor = Duration.ofDays(guardarDias);
 	}
 
@@ -89,6 +92,8 @@ public class Verificador {
 		Instant agora = Instant.now();
 		Verificacao salva = verificacoes.save(new Verificacao(servico, agora, resultado));
 		servicos.agendarDepoisDaVerificacao(servico.getId(), agora, servico.getProximaVerificacao());
+		alertas.avaliar(servico.getId(), servico.getNome(), servico.getIntervaloSegundos(), resultado.noAr(),
+				resultado.erro());
 		return VerificacaoResposta.de(salva);
 	}
 

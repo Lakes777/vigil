@@ -42,4 +42,12 @@ public interface ServicoRepository extends JpaRepository<Servico, Long> {
 			""")
 	int agendarDepoisDaVerificacao(Long id, Instant agora, Instant lida);
 
+	/**
+	 * Fecha um aviso de "caiu" sem mandar o "voltou": ao pausar ou trocar a URL, o que
+	 * vier depois não tem a ver com a queda antiga (senão chegaria "ficou fora por 21 d").
+	 */
+	@Modifying
+	@Query(nativeQuery = true, value = "update servico set alerta_fora_desde = null where id = :id")
+	void esquecerAviso(Long id);
+
 }

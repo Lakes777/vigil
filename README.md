@@ -10,7 +10,7 @@ API em Java com Spring Boot que verifica de tempos em tempos se os meus sites e 
 guarda o histórico de cada verificação e calcula a disponibilidade de cada serviço. Quando algo
 cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/bot-utilidades)).
 
-> Em construção. Pronto: cadastro, verificações periódicas, disponibilidade e segurança. Próximo: alertas pelo Telegram.
+> Em construção. Pronto: cadastro, verificações, disponibilidade, segurança e avisos pelo Telegram. Próximo: página de status e publicação.
 
 ## Tecnologias
 
@@ -35,6 +35,14 @@ docker compose up -d     # sobe o Postgres na porta 5433
 
 Sem a chave (ou com menos de 32 caracteres) a API nem sobe. Em produção ela vem da variável de
 ambiente `VIGIL_ADMIN_CHAVE`.
+
+Para receber os avisos no Telegram, acrescente no mesmo arquivo o token do bot e o seu ID
+(em produção: `TELEGRAM_TOKEN` e `TELEGRAM_CHAT_ID`). Sem eles, os avisos vão só para o log.
+
+```properties
+vigil.alerta.telegram.token=123456:ABC...
+vigil.alerta.telegram.chat=123456789
+```
 
 - Documentação interativa (Swagger): http://localhost:8080/docs
 - Saúde da API: http://localhost:8080/actuator/health
@@ -131,6 +139,32 @@ e a próxima verificação fica marcada para daqui a `intervaloSegundos`.
 Configurável em `application.properties`: `vigil.verificacao.tique`, `vigil.verificacao.tempo-limite`
 e `vigil.verificacao.ligado` (desligado nos testes).
 
+## Avisos pelo Telegram
+
+O Vigil manda a mensagem pela API do Telegram com o token do
+[Sidekick](https://github.com/Lakes777/bot-utilidades): o aviso chega na conversa com o bot, sem
+mudar nada nele.
+
+```
+Vigil: Hanami caiu (tempo esgotado (10 s)). Fora desde 14:32 de 06/10.
+Vigil: Hanami voltou. Ficou fora por 12 min (desde 14:32 de 06/10).
+```
+
+- **Caiu** só depois de **2 falhas seguidas** (`vigil.alerta.falhas-seguidas`). Sites no plano grátis
+  do Render dormem e a primeira visita passa dos 10 s: com um aviso por falha, o celular tocaria à toa.
+  "Seguidas" quer dizer sem buraco (no máximo dois intervalos entre uma e outra): uma falha de antes
+  de a API ficar desligada não se soma a uma de agora.
+- **Voltou** na primeira verificação no ar depois de um "caiu". Enquanto continua fora, não repete.
+  O tempo fora conta do começo da queda até a volta, inclusive um período com a API desligada.
+- **Pausar ou trocar a URL** fecha o aviso sem mandar "voltou" (a queda antiga deixa de valer).
+- O estado fica no banco (`servico.alerta_fora_desde`), então reiniciar a API não repete nem esquece
+  avisos. Abrir e fechar o aviso são `update ... where` condicionais: se a verificação manual e a do
+  agendador terminarem juntas, só uma manda a mensagem.
+- Se o Telegram não responder, o aviso é desfeito e a próxima verificação tenta de novo.
+- Um problema nos avisos nunca derruba a verificação: vai só para o log.
+- O token só é usado se tiver o formato do BotFather, e nunca aparece no log.
+- Nos testes, o Telegram é um WireMock; o de verdade nunca é chamado.
+
 ## Disponibilidade e quedas
 
 ```json
@@ -162,6 +196,7 @@ verificacao/     Sonda (acessa a URL e mede) · Verificador (quem verificar, gra
                  LimiteManual (uma verificação manual a cada 10 s)
 disponibilidade/ DisponibilidadeRepository (SQL dos números e das quedas) · DisponibilidadeService
                  DisponibilidadeController · Periodo, Queda, StatusServico (JSON)
+alerta/          Alertas (quando avisar) · AlertaRepository (estado no banco) · Telegram (envio)
 seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a chave)
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
@@ -175,7 +210,7 @@ erro/            TratadorDeErros (exceções -> respostas HTTP)
 - [x] Disponibilidade em %, tempo médio e lista de quedas
 - [x] Rotas de administração protegidas (Spring Security), bloqueio de endereços internos (localhost,
       rede privada, 169.254.169.254) e limite de uso do `POST /verificar`
-- [ ] Alertas pelo Telegram quando um serviço cai ou volta (só após 2 falhas seguidas: sites no plano
+- [x] Alertas pelo Telegram quando um serviço cai ou volta (só após 2 falhas seguidas: sites no plano
       grátis do Render dormem e a primeira visita passa dos 10 s)
 - [x] Apagar verificações antigas (guardadas por 90 dias)
 - [ ] Página pública de status e publicação com Docker

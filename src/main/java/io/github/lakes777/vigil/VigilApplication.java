@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 
 @SpringBootApplication
 @EnableScheduling
-@OpenAPIDefinition(info = @Info(title = "Vigil", version = "0.5",
+@OpenAPIDefinition(info = @Info(title = "Vigil", version = "0.6",
 		description = "Monitor de status dos meus projetos: cadastro de serviços, verificações e disponibilidade. "
 				+ "Ler é público; alterar pede a chave de admin (botão Authorize)."))
 // O botão "Authorize" do Swagger: a chave digitada lá vai como "Authorization: Bearer <chave>"

@@ -55,6 +55,10 @@ public class ServicoService {
 		}
 		validarUrl(entrada.url());
 		// Sem save(): dentro da transação, o JPA grava sozinho o que mudou no objeto
+		boolean pausou = servico.isAtivo() && !entrada.ativoOu(true);
+		if (pausou || !servico.getUrl().equals(entrada.url())) {
+			repositorio.esquecerAviso(id);
+		}
 		servico.alterar(nome, entrada.url(), entrada.intervaloOu(servico.getIntervaloSegundos()),
 				entrada.ativoOu(servico.isAtivo()));
 		return ServicoResposta.de(servico);
