@@ -4,50 +4,159 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vigil · Status</title>
-<meta name="description" content="Status dos projetos de Lakes777: quais estão no ar e a disponibilidade nos últimos 30 dias.">
+<meta name="description" content="Status dos projetos de Lakes777: quais estão no ar, a disponibilidade nos últimos 30 dias, o tempo de resposta e as quedas.">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <style>
   :root {
-    --fundo: #f4f5f6; --cartao: #ffffff; --borda: #dfe2e5; --texto: #1e2124; --suave: #5f676e;
+    --fundo: #f4f5f6; --cartao: #ffffff; --borda: #dfe2e5; --linha: #eceef0; --texto: #1e2124; --suave: #5f676e;
     --vazio: #d5d9dd; --no-ar: #2f9e5b; --parcial: #d29b2a; --fora: #d0463b; --pausado: #8a9298; --destaque: #2f6fb5;
+    --dica-fundo: #1e2124; --dica-texto: #f1f3f4; --sombra: 0 6px 24px rgba(20, 24, 28, .16);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --fundo: #16181a; --cartao: #1e2124; --borda: #2e3236; --texto: #e4e7e9; --suave: #9aa2a8;
+      --fundo: #16181a; --cartao: #1e2124; --borda: #2e3236; --linha: #272b2f; --texto: #e4e7e9; --suave: #9aa2a8;
       --vazio: #33383d; --no-ar: #3fb36c; --parcial: #e0aa3e; --fora: #e5584c; --pausado: #7d858b; --destaque: #6aa4e6;
+      --dica-fundo: #e4e7e9; --dica-texto: #16181a; --sombra: 0 6px 24px rgba(0, 0, 0, .5);
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--fundo); color: var(--texto);
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  main { max-width: 780px; margin: 0 auto; padding: 32px 16px 48px; }
+  .so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
+
+  /* Topo */
   header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
   header img { width: 44px; height: 44px; }
   h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
   header p { margin: 0; color: var(--suave); font-size: 14px; }
-  .geral { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 10px;
-    background: var(--cartao); border: 1px solid var(--borda); margin-bottom: 20px; font-weight: 600; }
+  h2 { font-size: 15px; margin: 32px 0 10px; }
+
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; }
   .ponto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--pausado); }
-  .NO_AR .ponto, .ponto.NO_AR { background: var(--no-ar); }
-  .FORA .ponto, .ponto.FORA { background: var(--fora); }
-  .lista { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; }
-  .servico { padding: 16px; border-top: 1px solid var(--borda); }
+  .ponto.NO_AR { background: var(--no-ar); }
+  .ponto.FORA { background: var(--fora); }
+
+  /* Situação geral */
+  .geral { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-left: 4px solid var(--pausado); }
+  .geral.NO_AR { border-left-color: var(--no-ar); }
+  .geral.FORA { border-left-color: var(--fora); }
+  .geral .ponto { width: 12px; height: 12px; }
+  .geral.NO_AR .ponto { background: var(--no-ar); box-shadow: 0 0 0 0 var(--no-ar); animation: pulso 2.4s ease-out infinite; }
+  .geral.FORA .ponto { background: var(--fora); }
+  .geral strong { display: block; font-size: 16px; }
+  .geral small { color: var(--suave); font-size: 13px; }
+  @keyframes pulso {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--no-ar) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 9px transparent; }
+  }
+
+  .numeros-gerais { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 0; }
+  .numeros-gerais div { padding: 12px 14px; }
+  .numeros-gerais dt { font-size: 12px; color: var(--suave); }
+  .numeros-gerais dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Serviços */
+  .lista { margin-top: 12px; }
+  .servico { border-top: 1px solid var(--borda); }
   .servico:first-child { border-top: 0; }
-  .linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .nome { font-weight: 600; color: inherit; text-decoration: none; }
-  a.nome:hover { color: var(--destaque); text-decoration: underline; }
+  .cabeca { display: grid; grid-template-columns: 1fr auto 18px; align-items: center; gap: 4px 12px; width: 100%;
+    padding: 14px 16px 0; background: none; border: 0; text-align: left; cursor: pointer; }
+  .cabeca:hover .nome { color: var(--destaque); }
+  .nome { font-weight: 600; }
   .situacao { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); }
-  .numeros { margin: 2px 0 0; font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
-  .barras { display: flex; gap: 2px; height: 30px; margin: 10px 0 4px; }
-  .barras span { flex: 1; border-radius: 2px; background: var(--vazio); min-width: 0; }
+  .seta { width: 18px; height: 18px; color: var(--suave); transition: transform .2s ease; }
+  .servico.aberto .seta { transform: rotate(180deg); }
+  .resumo { grid-column: 1 / -1; font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
+  .corpo { padding: 0 16px 14px; }
+  .barras { display: flex; gap: 2px; height: 30px; margin: 10px 0 4px; border-radius: 3px; cursor: default; }
+  .barras span { flex: 1; border-radius: 2px; background: var(--vazio); min-width: 0; transition: opacity .15s; }
   .barras .ok { background: var(--no-ar); }
   .barras .parcial { background: var(--parcial); }
   .barras .ruim { background: var(--fora); }
+  .barras.apontando span { opacity: .45; }
+  .barras.apontando span.atual { opacity: 1; }
   .legenda { display: flex; justify-content: space-between; font-size: 12px; color: var(--suave); }
-  @media (max-width: 480px) { .barras { gap: 1px; height: 26px; } }
-  footer { margin-top: 20px; font-size: 13px; color: var(--suave); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+
+  /* Detalhes de um serviço */
+  .detalhe { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+  .servico.aberto .detalhe { grid-template-rows: 1fr; }
+  .detalhe > div { overflow: hidden; min-height: 0; }
+  .detalhe-dentro { padding: 4px 16px 18px; }
+  .info { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--suave); margin: 4px 0 14px; }
+  .info a { color: var(--destaque); }
+  .periodos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 18px; }
+  .periodo { border: 1px solid var(--linha); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--suave); }
+  .periodo b { display: block; font-size: 17px; color: var(--texto); font-variant-numeric: tabular-nums; }
+  .periodo span { display: block; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 13px; margin: 0; }
+  .titulo-grafico { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .escolha { display: inline-flex; border: 1px solid var(--borda); border-radius: 7px; padding: 2px; }
+  .escolha button { border: 0; background: none; padding: 2px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; color: var(--suave); }
+  .escolha button[aria-pressed="true"] { background: var(--linha); color: var(--texto); font-weight: 600; }
+  .grafico { position: relative; height: 150px; }
+  .grafico svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .grafico .grade { stroke: var(--linha); }
+  .grafico text { fill: var(--suave); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grafico .area { fill: color-mix(in srgb, var(--destaque) 14%, transparent); }
+  .grafico .media { fill: none; stroke: var(--destaque); stroke-width: 1.8; stroke-linejoin: round; }
+  .grafico .falha { fill: var(--fora); }
+  .grafico .guia { stroke: var(--suave); stroke-width: 1; }
+  .grafico .marca { fill: var(--cartao); stroke: var(--destaque); stroke-width: 2; }
+  .legenda-grafico { display: flex; gap: 14px; font-size: 12px; color: var(--suave); margin-top: 4px; flex-wrap: wrap; }
+  .legenda-grafico i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--destaque); vertical-align: middle; margin-right: 5px; }
+  .legenda-grafico i.falha { width: 8px; height: 8px; border: 0; background: var(--fora); border-radius: 1px; }
+  .vazio { font-size: 13px; color: var(--suave); padding: 12px 0; }
+  .quedas-servico { margin-top: 18px; }
+  .quedas-servico ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .quedas-servico li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--linha); }
+  .quedas-servico li span:last-child { color: var(--suave); text-align: right; }
+
+  /* Incidentes */
+  .incidentes { padding: 4px 16px; }
+  .dia-incidente { padding: 12px 0; border-top: 1px solid var(--borda); }
+  .dia-incidente:first-child { border-top: 0; }
+  .dia-incidente h3 { color: var(--suave); font-weight: 600; margin-bottom: 4px; }
+  .incidente { display: grid; grid-template-columns: 10px 1fr; gap: 0 12px; padding: 6px 0; }
+  .incidente .ponto { margin-top: 6px; background: var(--fora); }
+  .incidente.resolvido .ponto { background: var(--vazio); }
+  .incidente p { margin: 0; }
+  .incidente .quem { font-weight: 600; }
+  .incidente .quando, .incidente .nota { font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
+  .selo { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 99px; margin-left: 6px;
+    vertical-align: 1px; background: var(--linha); color: var(--suave); }
+  .selo.andamento { background: color-mix(in srgb, var(--fora) 16%, transparent); color: var(--fora); }
+  .mais { display: block; width: 100%; padding: 10px; margin: 0 0 4px; border: 0; border-top: 1px solid var(--borda);
+    background: none; color: var(--destaque); cursor: pointer; font-size: 13px; }
+  .explicacao { font-size: 12px; color: var(--suave); margin: 8px 2px 0; }
+
+  /* Dica (tooltip) das barras e do gráfico */
+  .dica { position: fixed; z-index: 10; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 7px;
+    background: var(--dica-fundo); color: var(--dica-texto); font-size: 12px; line-height: 1.45; box-shadow: var(--sombra);
+    opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; font-variant-numeric: tabular-nums; }
+  .dica.visivel { opacity: 1; transform: none; }
+  .dica b { display: block; font-size: 13px; }
+  .dica .cor { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+
+  footer { margin-top: 24px; font-size: 13px; color: var(--suave); display: flex; flex-wrap: wrap; gap: 6px 16px; }
   footer a { color: var(--destaque); }
-  .aviso { padding: 16px; color: var(--suave); }
+  .aviso { padding: 16px; color: var(--suave); margin: 0; }
+
+  @media (max-width: 560px) {
+    main { padding-top: 24px; }
+    .numeros-gerais dd { font-size: 17px; }
+    .numeros-gerais div { padding: 10px; }
+    .periodos { grid-template-columns: 1fr; }
+    .periodo { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 0 8px; }
+    .periodo span ~ span { grid-column: 1 / -1; }
+    .barras { gap: 1px; height: 26px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -60,22 +169,66 @@
     </div>
   </header>
 
-  <div class="geral" id="geral" role="status"><span class="ponto"></span><span>Carregando…</span></div>
-  <section class="lista" id="lista" aria-label="Serviços"></section>
+  <div class="geral cartao" id="geral" role="status">
+    <span class="ponto"></span>
+    <div><strong>Carregando…</strong><small></small></div>
+  </div>
+
+  <dl class="numeros-gerais" id="numeros-gerais" hidden>
+    <div class="cartao"><dt>No ar em 30 dias</dt><dd id="n-disponibilidade">–</dd></div>
+    <div class="cartao"><dt>Resposta média (24 h)</dt><dd id="n-tempo">–</dd></div>
+    <div class="cartao"><dt>Incidentes em 30 dias</dt><dd id="n-quedas">–</dd></div>
+  </dl>
+
+  <h2>Serviços</h2>
+  <section class="lista cartao" id="lista" aria-label="Serviços"></section>
+  <p class="explicacao">Cada barra é um dia (horário de Brasília). Clique num serviço para ver o tempo de resposta e as quedas.</p>
+
+  <h2>Histórico de incidentes</h2>
+  <section class="cartao" aria-label="Histórico de incidentes">
+    <div class="incidentes" id="incidentes"><p class="aviso">Carregando…</p></div>
+    <button class="mais" id="mais" type="button" hidden>Mostrar mais</button>
+  </section>
+  <p class="explicacao">Uma queda de uma verificação só costuma ser instabilidade passageira (ou um servidor gratuito
+    acordando). O aviso no Telegram só sai depois de 2 falhas seguidas.</p>
 
   <footer>
     <span id="atualizado"></span>
+    <span>Horários de Brasília</span>
     <a href="docs">API (Swagger)</a>
     <a href="https://github.com/Lakes777/vigil">Código no GitHub</a>
   </footer>
 </main>
 
+<div class="dica" id="dica" role="tooltip" aria-hidden="true"></div>
+<div class="so-leitor" id="anuncio" aria-live="polite"></div>
+
 <script>
   const DIAS = 30;
+  const INCIDENTES_POR_VEZ = 8;
+  // Quedas que começam com até 90 s de diferença são o mesmo incidente (a verificação é a cada 5 min)
+  const MESMO_INCIDENTE_MS = 90_000;
   const NOMES = { NO_AR: "No ar", FORA: "Fora do ar", PAUSADO: "Pausado", SEM_DADOS: "Sem dados ainda" };
+  const FUSO = "America/Sao_Paulo";
   const porcento = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
-  const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const inteiro = new Intl.NumberFormat("pt-BR");
+  const segundos = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+  const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  const diaDaSemana = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" });
+  const diaLongo = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO });
+  const diaEHora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: FUSO });
+  const horaDoDia = new Intl.DateTimeFormat("pt-BR", { hour: "numeric", hourCycle: "h23", timeZone: FUSO });
+  const diaEmBrasilia = new Intl.DateTimeFormat("en-CA", { timeZone: FUSO });
+
+  const estado = {
+    abertos: new Set(),       // serviços com os detalhes abertos
+    janela: new Map(),        // serviço -> 24 ou 168 horas no gráfico
+    artigos: new Map(),       // serviço -> o <article> já montado (para atualizar sem remontar)
+    incidentesVisiveis: INCIDENTES_POR_VEZ,
+    quedas: [],
+    status: [],
+  };
 
   // Os nomes vêm do banco: o texto entra sempre por textContent, nunca como HTML
   function el(tag, classe, texto) {
@@ -85,10 +238,20 @@
     return no;
   }
 
+  function svg(tag, atributos) {
+    const no = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [nome, valor] of Object.entries(atributos || {})) no.setAttribute(nome, valor);
+    return no;
+  }
+
+  /** "aaaa-mm-dd" do dia em Brasília de um instante. */
+  function diaDe(instante) {
+    return diaEmBrasilia.format(new Date(instante));
+  }
+
   /** Os últimos 30 dias no horário de Brasília, do mais antigo para hoje, como "aaaa-mm-dd". */
   function ultimosDias() {
-    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-    const base = new Date(hoje + "T12:00:00Z");
+    const base = new Date(diaDe(Date.now()) + "T12:00:00Z");
     return Array.from({ length: DIAS }, (_, i) => {
       const d = new Date(base);
       d.setUTCDate(base.getUTCDate() - (DIAS - 1 - i));
@@ -96,59 +259,520 @@
     });
   }
 
-  function barra(dia, dado) {
-    const b = el("span");
-    const rotulo = dataCurta.format(new Date(dia + "T12:00:00Z"));
-    if (!dado) {
-      b.title = rotulo + ": sem verificações";
-    } else {
-      const d = dado.disponibilidade;
-      b.className = d >= 99 ? "ok" : d >= 90 ? "parcial" : "ruim";
-      b.title = rotulo + ": " + porcento.format(d) + "% no ar (" + dado.falhas + " falha"
-        + (dado.falhas === 1 ? "" : "s") + " em " + dado.verificacoes + ")";
-    }
-    b.setAttribute("aria-label", b.title);
-    return b;
+  function duracao(segundos) {
+    const minutos = Math.round(segundos / 60);
+    if (minutos < 1) return "menos de 1 min";
+    if (minutos < 60) return minutos + " min";
+    const horas = Math.floor(minutos / 60);
+    if (horas < 24) return horas + " h" + (minutos % 60 ? " " + (minutos % 60) + " min" : "");
+    const dias = Math.floor(horas / 24);
+    return dias + (dias === 1 ? " dia" : " dias") + (horas % 24 ? " " + (horas % 24) + " h" : "");
   }
 
-  function servico(status, url, diasDoServico, dias) {
-    const linha = el("article", "servico " + status.situacao);
-    const topo = el("div", "linha");
-    const nome = el(url ? "a" : "span", "nome", status.nome);
-    if (url) { nome.href = url; nome.rel = "noopener"; }
-    const situacao = el("span", "situacao");
-    situacao.append(el("span", "ponto " + status.situacao), NOMES[status.situacao] || status.situacao);
-    topo.append(nome, situacao);
+  function haQuanto(instante) {
+    const segundos = (Date.now() - new Date(instante)) / 1000;
+    if (segundos < 60) return "agora há pouco";
+    return "há " + duracao(segundos);
+  }
 
+  function plural(n, um, varios) {
+    return inteiro.format(n) + " " + (n === 1 ? um : varios);
+  }
+
+  function ms(valor) {
+    return valor == null ? "–" : inteiro.format(valor) + " ms";
+  }
+
+  // ---------- Dica (tooltip) ----------
+
+  const dica = document.getElementById("dica");
+  const anuncio = document.getElementById("anuncio");
+
+  /** linhas: [texto em negrito, ...linhas comuns]; uma linha pode ser [cor, texto] para ter um quadradinho. */
+  function mostrarDica(linhas, x, y, anunciar) {
+    const [titulo, ...resto] = linhas;
+    dica.replaceChildren(el("b", "", titulo), ...resto.map(linha => {
+      const div = el("div");
+      if (Array.isArray(linha)) {
+        const cor = el("span", "cor");
+        cor.style.background = linha[0];
+        div.append(cor, linha[1]);
+      } else {
+        div.textContent = linha;
+      }
+      return div;
+    }));
+    dica.classList.add("visivel");
+    const largura = dica.offsetWidth, altura = dica.offsetHeight;
+    const esquerda = Math.min(Math.max(8, x - largura / 2), window.innerWidth - largura - 8);
+    const topo = y - altura - 10 < 8 ? y + 18 : y - altura - 10;
+    dica.style.left = esquerda + "px";
+    dica.style.top = topo + "px";
+    if (anunciar) anuncio.textContent = linhas.map(l => Array.isArray(l) ? l[1] : l).join(". ");
+  }
+
+  function esconderDica() {
+    dica.classList.remove("visivel");
+  }
+
+  /**
+   * Liga a dica a uma faixa (as barras ou o gráfico): mouse, toque e setas do teclado
+   * escolhem uma posição de 0 a quantos()-1; marcar(i) destaca e devolve as linhas da dica.
+   */
+  function dicaNaFaixa(alvo, quantos, marcar, limpar) {
+    let atual = -1;
+    const indice = x => {
+      const total = quantos();
+      const r = alvo.getBoundingClientRect();
+      return Math.min(total - 1, Math.max(0, Math.floor((x - r.left) / r.width * total)));
+    };
+    const mostrar = (i, x, y, anunciar) => {
+      atual = i;
+      const resultado = marcar(i);
+      if (!resultado) { esconderDica(); return; }
+      const r = alvo.getBoundingClientRect();
+      mostrarDica(resultado.linhas, x ?? r.left + resultado.x, y ?? r.top, anunciar);
+    };
+    const sair = () => { atual = -1; limpar(); esconderDica(); };
+    alvo.addEventListener("pointermove", e => mostrar(indice(e.clientX), e.clientX, alvo.getBoundingClientRect().top));
+    alvo.addEventListener("pointerdown", e => mostrar(indice(e.clientX), e.clientX, alvo.getBoundingClientRect().top));
+    alvo.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") sair(); });
+    alvo.addEventListener("blur", sair);
+    alvo.addEventListener("keydown", e => {
+      const total = quantos();
+      const passos = { ArrowLeft: -1, ArrowRight: 1, Home: -total, End: total };
+      if (!(e.key in passos)) { if (e.key === "Escape") sair(); return; }
+      e.preventDefault();
+      const i = Math.min(total - 1, Math.max(0, (atual < 0 ? total : atual) + passos[e.key]));
+      mostrar(i, undefined, undefined, true);
+    });
+  }
+
+  // No celular a dica fica até tocar fora
+  document.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "mouse" && !e.target.closest(".barras, .grafico")) esconderDica();
+  });
+  window.addEventListener("scroll", esconderDica, { passive: true });
+
+  // ---------- Barras dos dias ----------
+
+  function classeDoDia(dado) {
+    if (!dado) return "";
+    const d = dado.disponibilidade;
+    return d >= 99 ? "ok" : d >= 90 ? "parcial" : "ruim";
+  }
+
+  function linhasDoDia(dia, dado, quedasDoDia) {
+    const titulo = diaDaSemana.format(new Date(dia + "T12:00:00Z")).replace(".", "");
+    if (!dado) return [titulo, "Sem verificações neste dia"];
+    const cor = getComputedStyle(document.documentElement)
+      .getPropertyValue({ ok: "--no-ar", parcial: "--parcial", ruim: "--fora" }[classeDoDia(dado)]);
+    const linhas = [titulo, [cor, porcento.format(dado.disponibilidade) + "% no ar"],
+      plural(dado.falhas, "falha", "falhas") + " em " + plural(dado.verificacoes, "verificação", "verificações")];
+    quedasDoDia.slice(0, 3).forEach(q => linhas.push("Queda às " + hora.format(new Date(q.inicio))
+      + " (" + (q.emAndamento ? "em andamento" : duracao(q.duracaoSegundos)) + ")"));
+    if (quedasDoDia.length > 3) linhas.push("e mais " + (quedasDoDia.length - 3));
+    return linhas;
+  }
+
+  function montarBarras(barras, servicoId, porDia, dias) {
+    const quedas = estado.quedas.filter(q => q.servicoId === servicoId);
+    const spans = dias.map(dia => el("span", classeDoDia(porDia.get(dia))));
+    barras.replaceChildren(...spans);
+    const comFalha = dias.filter(d => porDia.get(d)?.falhas).length;
+    barras.setAttribute("aria-label", "Disponibilidade por dia nos últimos " + DIAS + " dias: "
+      + (comFalha ? plural(comFalha, "dia", "dias") + " com falhas" : "nenhum dia com falhas")
+      + ". Use as setas para ver cada dia.");
+    barras._dados = { dias, porDia, quedas, spans };
+  }
+
+  function criarBarras() {
     const barras = el("div", "barras");
-    barras.setAttribute("role", "img");
-    barras.setAttribute("aria-label", "Disponibilidade por dia nos últimos " + DIAS + " dias");
-    dias.forEach(dia => barras.append(barra(dia, diasDoServico.get(dia))));
+    barras.tabIndex = 0;
+    barras.setAttribute("role", "group");
+    barras.setAttribute("aria-roledescription", "gráfico");
+    dicaNaFaixa(barras, () => DIAS, i => {
+      const { dias, porDia, quedas, spans } = barras._dados;
+      barras.classList.add("apontando");
+      spans.forEach((s, j) => s.classList.toggle("atual", j === i));
+      const dia = dias[i];
+      const span = spans[i];
+      return {
+        linhas: linhasDoDia(dia, porDia.get(dia), quedas.filter(q => diaDe(q.inicio) === dia)),
+        x: span.getBoundingClientRect().left - barras.getBoundingClientRect().left + span.offsetWidth / 2,
+      };
+    }, () => barras.classList.remove("apontando"));
+    return barras;
+  }
 
-    const trinta = status.ultimos30d.disponibilidade;
-    const media = status.ultimas24h.tempoMedioMs;
-    const numeros = el("p", "numeros", trinta == null ? "Sem verificações ainda"
-      : porcento.format(trinta) + "% no ar em 30 dias" + (media == null ? "" : " · " + media + " ms em média"));
+  // ---------- Gráfico do tempo de resposta ----------
 
+  /** Um teto "redondo" para o eixo: 137 -> 200, 640 -> 750, 2300 -> 2500. */
+  function teto(valor) {
+    const base = 10 ** Math.floor(Math.log10(Math.max(valor, 1)));
+    return [1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10].map(m => m * base).find(v => v >= valor);
+  }
+
+  function desenharGrafico(caixa, pontos, horas) {
+    const largura = caixa.clientWidth, altura = caixa.clientHeight;
+    if (!largura) return;
+    const esquerda = 46, baixo = 20, topo = 6;
+    const fimDaJanela = new Date();
+    fimDaJanela.setUTCMinutes(60, 0, 0); // fim da hora atual (o servidor agrupa pela hora em UTC)
+    const inicio = fimDaJanela - horas * 3_600_000;
+    const larguraUtil = largura - esquerda;
+    const passo = larguraUtil / horas;
+    const x = instante => esquerda + (new Date(instante) - inicio) / 3_600_000 * passo + passo / 2;
+    const comTempo = pontos.filter(p => p.tempoMedioMs != null);
+    // A escala segue a média: um p95 de 9 s numa hora achataria a linha toda
+    const maximo = teto(Math.max(100, ...comTempo.map(p => p.tempoMedioMs)) * 1.15);
+    const y = valor => topo + (altura - baixo - topo) * (1 - valor / maximo);
+
+    const desenho = svg("svg", { "aria-hidden": "true" });
+    for (const fracao of [0, .5, 1]) {
+      const v = maximo * fracao;
+      desenho.append(svg("line", { class: "grade", x1: esquerda, x2: largura, y1: y(v), y2: y(v) }));
+      const rotulo = svg("text", { x: esquerda - 6, y: y(v) + 4, "text-anchor": "end" });
+      rotulo.textContent = v >= 1000 ? segundos.format(v / 1000) + " s" : inteiro.format(v) + " ms";
+      desenho.append(rotulo);
+    }
+    // Rótulos de tempo no relógio de Brasília: 0h, 6h, 12h e 18h (24 h) ou o dia da semana ao meio-dia (7 dias)
+    for (let h = 1; h < horas; h++) {
+      const instante = new Date(inicio + h * 3_600_000);
+      const horaLocal = +horaDoDia.format(instante);
+      if (horas <= 24 ? horaLocal % 6 : horaLocal !== 12) continue;
+      const rotulo = svg("text", { x: esquerda + h * passo, y: altura - 4, "text-anchor": "middle" });
+      rotulo.textContent = horas <= 24 ? horaLocal + "h"
+        : diaDaSemana.format(new Date(diaDe(instante) + "T12:00:00Z")).split(",")[0].replace(".", "");
+      desenho.append(rotulo);
+    }
+
+    // Linhas com buracos nas horas sem dado: um "M" recomeça a linha depois de cada buraco
+    const caminho = () => {
+      let d = "", anterior = null;
+      for (const p of comTempo) {
+        const valor = p.tempoMedioMs;
+        const continua = anterior && new Date(p.hora) - new Date(anterior.hora) <= 3_600_000;
+        d += (continua ? " L" : " M") + x(p.hora).toFixed(1) + " " + y(valor).toFixed(1);
+        anterior = p;
+      }
+      return d.trim();
+    };
+    const blocos = [];
+    let bloco = [];
+    comTempo.forEach((p, i) => {
+      if (i && new Date(p.hora) - new Date(comTempo[i - 1].hora) > 3_600_000) { blocos.push(bloco); bloco = []; }
+      bloco.push(p);
+    });
+    if (bloco.length) blocos.push(bloco);
+    const area = blocos.map(b => "M" + x(b[0].hora) + " " + y(0) + b.map(p => " L" + x(p.hora) + " " + y(p.tempoMedioMs))
+      .join("") + " L" + x(b[b.length - 1].hora) + " " + y(0) + " Z").join(" ");
+    desenho.append(svg("path", { class: "area", d: area }));
+    desenho.append(svg("path", { class: "media", d: caminho() }));
+    // Horas com falha: um tracinho vermelho embaixo
+    pontos.filter(p => p.falhas).forEach(p => desenho.append(svg("rect", {
+      class: "falha", x: x(p.hora) - Math.max(1.5, passo / 2 - 1), y: altura - baixo - 4,
+      width: Math.max(3, passo - 2), height: 4, rx: 1 })));
+
+    const guia = svg("line", { class: "guia", y1: topo, y2: altura - baixo, visibility: "hidden" });
+    const marca = svg("circle", { class: "marca", r: 4, visibility: "hidden" });
+    desenho.append(guia, marca);
+    caixa.replaceChildren(desenho);
+
+    const porHora = new Map(pontos.map(p => [Math.floor((new Date(p.hora) - inicio) / 3_600_000), p]));
+    caixa._marcar = i => {
+      const xi = esquerda + i * passo + passo / 2;
+      guia.setAttribute("x1", xi); guia.setAttribute("x2", xi); guia.setAttribute("visibility", "visible");
+      const p = porHora.get(i);
+      const instante = new Date(inicio + i * 3_600_000);
+      const titulo = diaEHora.format(instante) + " às " + hora.format(new Date(+instante + 3_600_000));
+      if (p?.tempoMedioMs != null) {
+        marca.setAttribute("cx", xi); marca.setAttribute("cy", y(p.tempoMedioMs)); marca.setAttribute("visibility", "visible");
+      } else {
+        marca.setAttribute("visibility", "hidden");
+      }
+      const linhas = !p ? [titulo, "Sem verificações nesta hora"]
+        : [titulo, "Média: " + ms(p.tempoMedioMs), "p95: " + ms(p.tempoP95Ms),
+          plural(p.verificacoes, "verificação", "verificações") + (p.falhas ? ", " + plural(p.falhas, "falha", "falhas") : "")];
+      return { linhas, x: xi };
+    };
+    caixa._limpar = () => { guia.setAttribute("visibility", "hidden"); marca.setAttribute("visibility", "hidden"); };
+    caixa._total = horas;
+    caixa.setAttribute("aria-label", comTempo.length
+      ? "Tempo médio de resposta por hora: de " + ms(Math.min(...comTempo.map(p => p.tempoMedioMs)))
+        + " a " + ms(Math.max(...comTempo.map(p => p.tempoMedioMs))) + ". Use as setas para ver cada hora."
+      : "Sem respostas no período");
+  }
+
+  function criarGrafico() {
+    const caixa = el("div", "grafico");
+    caixa.tabIndex = 0;
+    caixa.setAttribute("role", "group");
+    caixa.setAttribute("aria-roledescription", "gráfico");
+    // O total muda entre 24 h e 7 dias: a faixa pergunta ao gráfico atual
+    dicaNaFaixa(caixa, () => caixa._total || 24, i => caixa._marcar?.(i), () => caixa._limpar?.());
+    new ResizeObserver(() => { if (caixa._pontos?.length) desenharGrafico(caixa, caixa._pontos, caixa._total); }).observe(caixa);
+    return caixa;
+  }
+
+  // ---------- Um serviço ----------
+
+  const SETA = '<svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+  function criarServico(id) {
+    const artigo = el("article", "servico");
+    const cabeca = el("button", "cabeca");
+    cabeca.type = "button";
+    cabeca.setAttribute("aria-expanded", "false");
+    cabeca.setAttribute("aria-controls", "detalhe-" + id);
+    const nome = el("span", "nome");
+    const situacao = el("span", "situacao");
+    const resumo = el("span", "resumo");
+    cabeca.append(nome, situacao);
+    cabeca.insertAdjacentHTML("beforeend", SETA);
+    cabeca.append(resumo);
+
+    const corpo = el("div", "corpo");
+    const barras = criarBarras();
     const legenda = el("div", "legenda");
     legenda.append(el("span", "", (DIAS - 1) + " dias atrás"), el("span", "", "hoje"));
     legenda.setAttribute("aria-hidden", "true");
-    linha.append(topo, numeros, barras, legenda);
-    return linha;
+    corpo.append(barras, legenda);
+
+    const detalhe = el("div", "detalhe");
+    detalhe.id = "detalhe-" + id;
+    const dentro = el("div", "detalhe-dentro");
+    const envoltorio = el("div");
+    envoltorio.append(dentro);
+    detalhe.append(envoltorio);
+    detalhe.inert = true;
+
+    artigo.append(cabeca, corpo, detalhe);
+    cabeca.addEventListener("click", () => alternar(id));
+    artigo._partes = { nome, situacao, resumo, barras, dentro, detalhe, cabeca };
+    return artigo;
   }
+
+  function atualizarServico(artigo, status, porDia, dias) {
+    const { nome, situacao, resumo, barras } = artigo._partes;
+    nome.textContent = status.nome;
+    situacao.replaceChildren(el("span", "ponto " + status.situacao), NOMES[status.situacao] || status.situacao);
+    const trinta = status.ultimos30d.disponibilidade;
+    const media = status.ultimas24h.tempoMedioMs;
+    resumo.textContent = trinta == null ? "Sem verificações ainda"
+      : porcento.format(trinta) + "% no ar em 30 dias" + (media == null ? "" : " · " + ms(media) + " em média");
+    montarBarras(barras, status.id, porDia, dias);
+    artigo._status = status;
+    if (estado.abertos.has(status.id)) carregarDetalhe(artigo);
+  }
+
+  function alternar(id) {
+    const artigo = estado.artigos.get(id);
+    const abrir = !estado.abertos.has(id);
+    abrir ? estado.abertos.add(id) : estado.abertos.delete(id);
+    artigo.classList.toggle("aberto", abrir);
+    artigo._partes.cabeca.setAttribute("aria-expanded", String(abrir));
+    artigo._partes.detalhe.inert = !abrir;
+    if (abrir) carregarDetalhe(artigo);
+  }
+
+  function periodo(titulo, p) {
+    const caixa = el("div", "periodo");
+    caixa.append(el("span", "", titulo),
+      el("b", "", p.disponibilidade == null ? "–" : porcento.format(p.disponibilidade) + "%"),
+      el("span", "", "média " + ms(p.tempoMedioMs) + " · p95 " + ms(p.tempoP95Ms)),
+      el("span", "", plural(p.falhas, "falha", "falhas") + " em " + plural(p.verificacoes, "verificação", "verificações")));
+    return caixa;
+  }
+
+  /** Monta a parte fixa do detalhe uma vez; as atualizações só trocam os números. */
+  function montarDetalhe(artigo) {
+    const { dentro } = artigo._partes;
+    const id = artigo._status.id;
+    const info = el("div", "info");
+    const periodos = el("div", "periodos");
+    const titulo = el("div", "titulo-grafico");
+    const escolha = el("div", "escolha");
+    escolha.setAttribute("role", "group");
+    escolha.setAttribute("aria-label", "Período do gráfico");
+    for (const [rotulo, horas] of [["24 h", 24], ["7 dias", 168]]) {
+      const botao = el("button", "", rotulo);
+      botao.type = "button";
+      botao.dataset.horas = horas;
+      botao.addEventListener("click", () => { estado.janela.set(id, horas); carregarDetalhe(artigo); });
+      escolha.append(botao);
+    }
+    titulo.append(el("h3", "", "Tempo de resposta"), escolha);
+    const grafico = criarGrafico();
+    const legendaGrafico = el("div", "legenda-grafico");
+    legendaGrafico.innerHTML = '<span><i></i>média por hora (o p95 aparece ao apontar)</span>'
+      + '<span><i class="falha"></i>hora com falha</span>';
+    const quedas = el("div", "quedas-servico");
+    dentro.replaceChildren(info, periodos, titulo, grafico, legendaGrafico, quedas);
+    artigo._detalhe = { info, periodos, escolha, grafico, quedas };
+  }
+
+  async function carregarDetalhe(artigo) {
+    if (!artigo._detalhe) montarDetalhe(artigo);
+    const status = artigo._status;
+    const horas = estado.janela.get(status.id) || 24;
+    const { info, periodos, escolha, grafico, quedas } = artigo._detalhe;
+
+    info.replaceChildren();
+    const url = estado.urls.get(status.id);
+    if (url) {
+      const link = el("a", "", "Abrir o site");
+      link.href = url; link.rel = "noopener"; link.target = "_blank";
+      info.append(link);
+    }
+    if (status.ultimaVerificacao) {
+      info.append(el("span", "", "Última verificação " + haQuanto(status.ultimaVerificacao)));
+    }
+    periodos.replaceChildren(periodo("Últimas 24 h", status.ultimas24h), periodo("7 dias", status.ultimos7d),
+      periodo("30 dias", status.ultimos30d));
+    escolha.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.horas === horas)));
+
+    const minhas = estado.quedas.filter(q => q.servicoId === status.id);
+    const lista = el("ul");
+    minhas.slice(0, 10).forEach(q => {
+      const item = el("li");
+      const quando = el("span", "", diaEHora.format(new Date(q.inicio)));
+      if (q.emAndamento) quando.append(el("span", "selo andamento", "em andamento"));
+      item.append(quando, el("span", "", duracao(q.duracaoSegundos) + " · " + (q.motivo || "sem resposta")));
+      lista.append(item);
+    });
+    quedas.replaceChildren(el("h3", "", "Quedas em 30 dias"),
+      minhas.length ? lista : el("p", "vazio", "Nenhuma queda nos últimos 30 dias."));
+    if (minhas.length > 10) quedas.append(el("p", "vazio", "e mais " + (minhas.length - 10) + " no histórico abaixo"));
+
+    try {
+      const pontos = await json("api/servicos/" + status.id + "/tempos?horas=" + horas);
+      // Se trocou de período enquanto carregava, a resposta antiga não vale mais
+      if ((estado.janela.get(status.id) || 24) !== horas) return;
+      grafico._pontos = pontos;
+      grafico._total = horas;
+      if (!pontos.length) {
+        grafico._marcar = null;
+        grafico.replaceChildren(el("p", "vazio", "Sem verificações neste período."));
+      } else {
+        desenharGrafico(grafico, pontos, horas);
+      }
+    } catch {
+      if ((estado.janela.get(status.id) || 24) !== horas) return;
+      grafico.replaceChildren(el("p", "vazio", "Não foi possível carregar o gráfico agora."));
+    }
+  }
+
+  // ---------- Incidentes ----------
+
+  /** Junta as quedas que começaram quase juntas: costuma ser um problema só (ex.: a rede da VM). */
+  function agrupar(quedas) {
+    const grupos = [];
+    for (const q of quedas) { // já vêm da mais recente para a mais antiga
+      const inicio = new Date(q.inicio);
+      const grupo = grupos.find(g => Math.abs(g.inicio - inicio) <= MESMO_INCIDENTE_MS);
+      if (grupo) {
+        grupo.quedas.push(q);
+        if (inicio < grupo.inicio) grupo.inicio = inicio;
+      } else {
+        grupos.push({ inicio, quedas: [q] });
+      }
+    }
+    return grupos;
+  }
+
+  function incidente(grupo, monitorados) {
+    const { quedas } = grupo;
+    const emAndamento = quedas.some(q => q.emAndamento);
+    const item = el("div", "incidente" + (emAndamento ? "" : " resolvido"));
+    item.append(el("span", "ponto"));
+    const texto = el("div");
+    const nomes = [...new Set(quedas.map(q => q.servico))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const quem = el("p", "quem", nomes.length > 1 ? nomes.length + " serviços: " + nomes.join(", ") : nomes[0]);
+    if (emAndamento) quem.append(el("span", "selo andamento", "em andamento"));
+    const falhas = Math.max(...quedas.map(q => q.falhas));
+    if (falhas === 1 && !emAndamento) quem.append(el("span", "selo", "breve"));
+
+    const fins = quedas.map(q => q.fim && new Date(q.fim)).filter(Boolean);
+    const maiorDuracao = Math.max(...quedas.map(q => q.duracaoSegundos));
+    const quando = hora.format(grupo.inicio) + (emAndamento ? " até agora" : fins.length
+      ? " – " + hora.format(new Date(Math.max(...fins))) : "") + " · " + duracao(maiorDuracao)
+      + " · " + plural(falhas, "verificação", "verificações seguidas") + " com falha";
+    const motivos = [...new Set(quedas.map(q => q.motivo).filter(Boolean))];
+    texto.append(quem, el("p", "quando", quando));
+    if (motivos.length) texto.append(el("p", "nota", "Motivo: " + motivos.join("; ")));
+    if (nomes.length >= 3 && nomes.length >= monitorados) {
+      texto.append(el("p", "nota", "Todos caíram ao mesmo tempo: provavelmente a rede do servidor do Vigil, não os sites."));
+    }
+    item.append(texto);
+    return item;
+  }
+
+  function montarIncidentes() {
+    const caixa = document.getElementById("incidentes");
+    const mais = document.getElementById("mais");
+    const grupos = agrupar(estado.quedas);
+    const monitorados = estado.status.filter(s => s.situacao !== "PAUSADO").length;
+    if (!grupos.length) {
+      caixa.replaceChildren(el("p", "aviso", "Nenhuma queda nos últimos 30 dias."));
+      mais.hidden = true;
+      return;
+    }
+    const porDia = new Map();
+    grupos.slice(0, estado.incidentesVisiveis).forEach(g => {
+      const dia = diaDe(g.inicio);
+      if (!porDia.has(dia)) porDia.set(dia, []);
+      porDia.get(dia).push(g);
+    });
+    caixa.replaceChildren(...[...porDia].map(([dia, gs]) => {
+      const bloco = el("div", "dia-incidente");
+      const titulo = diaLongo.format(new Date(dia + "T12:00:00Z"));
+      bloco.append(el("h3", "", titulo.charAt(0).toUpperCase() + titulo.slice(1)), ...gs.map(g => incidente(g, monitorados)));
+      return bloco;
+    }));
+    const restantes = grupos.length - estado.incidentesVisiveis;
+    mais.hidden = restantes <= 0;
+    mais.textContent = "Mostrar mais " + Math.min(restantes, INCIDENTES_POR_VEZ) + " de " + restantes;
+  }
+
+  document.getElementById("mais").addEventListener("click", () => {
+    estado.incidentesVisiveis += INCIDENTES_POR_VEZ;
+    montarIncidentes();
+  });
+
+  // ---------- Página ----------
 
   function resumoGeral(lista) {
     const monitorados = lista.filter(s => s.situacao !== "PAUSADO");
-    const fora = monitorados.filter(s => s.situacao === "FORA").length;
+    const fora = monitorados.filter(s => s.situacao === "FORA");
     const noAr = monitorados.filter(s => s.situacao === "NO_AR").length;
     const geral = document.getElementById("geral");
     // Verde só quando há o que mostrar: sem nenhum no ar (recém-publicado, tudo pausado) fica neutro
-    geral.className = "geral " + (fora ? "FORA" : noAr ? "NO_AR" : "");
-    geral.lastElementChild.textContent = fora === 1 ? "1 serviço fora do ar"
-      : fora > 1 ? fora + " serviços fora do ar"
+    geral.className = "geral cartao " + (fora.length ? "FORA" : noAr ? "NO_AR" : "");
+    geral.querySelector("strong").textContent = fora.length === 1 ? fora[0].nome + " está fora do ar"
+      : fora.length > 1 ? fora.length + " serviços fora do ar"
       : monitorados.length === 0 ? "Nenhum serviço monitorado no momento"
       : noAr === monitorados.length ? "Todos os serviços estão no ar"
       : "Aguardando as primeiras verificações";
+    const pausados = lista.length - monitorados.length;
+    geral.querySelector("small").textContent = plural(monitorados.length, "serviço monitorado", "serviços monitorados")
+      + (pausados ? " · " + plural(pausados, "pausado", "pausados") : "") + " · verificados a cada 5 min";
+
+    // Números gerais: a média ponderada pelas verificações (um serviço novo não pesa igual a um antigo)
+    const com30 = monitorados.filter(s => s.ultimos30d.verificacoes);
+    const total = com30.reduce((t, s) => t + s.ultimos30d.verificacoes, 0);
+    const falhas = com30.reduce((t, s) => t + s.ultimos30d.falhas, 0);
+    const com24 = monitorados.filter(s => s.ultimas24h.tempoMedioMs != null);
+    const pesos = com24.reduce((t, s) => t + (s.ultimas24h.verificacoes - s.ultimas24h.falhas), 0);
+    const tempo = pesos ? com24.reduce((t, s) => t + s.ultimas24h.tempoMedioMs
+      * (s.ultimas24h.verificacoes - s.ultimas24h.falhas), 0) / pesos : null;
+    document.getElementById("numeros-gerais").hidden = !total;
+    // Para baixo, como na API: 99,996% não pode virar 100,00%
+    document.getElementById("n-disponibilidade").textContent = total
+      ? porcento.format(Math.floor((total - falhas) * 10000 / total) / 100) + "%" : "–";
+    document.getElementById("n-tempo").textContent = ms(tempo == null ? null : Math.round(tempo));
+    document.getElementById("n-quedas").textContent = inteiro.format(agrupar(estado.quedas).length);
   }
 
   async function json(caminho) {
@@ -159,9 +783,10 @@
 
   async function carregar() {
     try {
-      const [status, servicos, dias] = await Promise.all(
-        [json("api/status"), json("api/servicos"), json("api/status/dias?dias=" + DIAS)]);
-      const urls = new Map(servicos.map(s => [s.id, s.url]));
+      const [status, servicos, dias, quedas] = await Promise.all([json("api/status"), json("api/servicos"),
+        json("api/status/dias?dias=" + DIAS), json("api/quedas?dias=" + DIAS)]);
+      estado.urls = new Map(servicos.map(s => [s.id, s.url]));
+      estado.quedas = quedas;
       const porServico = new Map();
       dias.forEach(d => {
         if (!porServico.has(d.servicoId)) porServico.set(d.servicoId, new Map());
@@ -169,18 +794,30 @@
       });
       // Pausados vão para o fim da lista
       status.sort((a, b) => (a.situacao === "PAUSADO") - (b.situacao === "PAUSADO"));
+      estado.status = status;
+
+      // Reaproveita os artigos já montados: os detalhes abertos não fecham a cada minuto
+      const ids = new Set(status.map(s => s.id));
+      for (const id of [...estado.artigos.keys()]) if (!ids.has(id)) { estado.artigos.delete(id); estado.abertos.delete(id); }
       const datas = ultimosDias();
+      const artigos = status.map(s => {
+        if (!estado.artigos.has(s.id)) estado.artigos.set(s.id, criarServico(s.id));
+        const artigo = estado.artigos.get(s.id);
+        atualizarServico(artigo, s, porServico.get(s.id) || new Map(), datas);
+        return artigo;
+      });
       const lista = document.getElementById("lista");
-      lista.replaceChildren(...status.map(s =>
-        servico(s, urls.get(s.id), porServico.get(s.id) || new Map(), datas)));
       if (status.length === 0) lista.replaceChildren(el("p", "aviso", "Nenhum serviço cadastrado ainda."));
+      else lista.replaceChildren(...artigos);
+
       resumoGeral(status);
-      document.getElementById("atualizado").textContent = "Atualizado às " + hora.format(new Date())
-        + " · verifica a cada 5 min";
+      montarIncidentes();
+      document.getElementById("atualizado").textContent = "Atualizado às " + hora.format(new Date());
     } catch (erro) {
       const geral = document.getElementById("geral");
-      geral.className = "geral";
-      geral.lastElementChild.textContent = "Não foi possível carregar o status agora. Tentando de novo em 1 minuto.";
+      geral.className = "geral cartao";
+      geral.querySelector("strong").textContent = "Não foi possível carregar o status agora";
+      geral.querySelector("small").textContent = "Tentando de novo em 1 minuto.";
     }
   }
 

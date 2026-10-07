@@ -71,6 +71,8 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 | `GET` | `/api/status/dias?dias=30` | Disponibilidade de cada serviço por dia (horário de Brasília), contando hoje |
 | `GET` | `/api/servicos/{id}/resumo` | O mesmo, de um serviço |
 | `GET` | `/api/servicos/{id}/quedas?dias=30` | Quedas da mais recente para a mais antiga (1 a 90 dias) |
+| `GET` | `/api/quedas?dias=30` | Quedas de todos os serviços (o histórico de incidentes da página) |
+| `GET` | `/api/servicos/{id}/tempos?horas=24` | Tempo de resposta hora a hora: média e p95 das verificações no ar (1 a 168 horas) |
 
 Ler (`GET`) é público. Cadastrar, editar, remover e "verificar agora" pedem a chave de admin:
 
@@ -184,7 +186,8 @@ Vigil: Hanami voltou. Ficou fora por 12 min (desde 14:32 de 06/10).
 - **Situação:** `NO_AR` ou `FORA` pela última verificação, `PAUSADO` ou `SEM_DADOS`.
 - **Quedas** são verificações seguidas fora do ar, com início, fim (ou `emAndamento`), duração,
   quantas falhas e o motivo da primeira. Saem de uma consulta só, pela técnica de *gaps and
-  islands* com `row_number()`. Uma queda que começou antes do período pedido aparece inteira, e a
+  islands* com `row_number()`. Uma queda que começou antes do período pedido aparece inteira (a
+  numeração começa na última verificação no ar antes do período, não no histórico todo), e a
   de um serviço pausado enquanto estava fora termina na última falha vista.
 - As contas são feitas no banco, em SQL puro (`JdbcClient`), numa consulta para todos os serviços.
   O JPA fica para o cadastro.
@@ -193,9 +196,17 @@ Vigil: Hanami voltou. Ficou fora por 12 min (desde 14:32 de 06/10).
 ## Página de status
 
 Em `/`, servida pelo próprio Spring (`src/main/resources/static`): HTML, CSS e JavaScript puros, sem
-framework. Busca `/api/status`, `/api/servicos` e `/api/status/dias` e se atualiza a cada minuto.
+framework. Busca `/api/status`, `/api/servicos`, `/api/status/dias` e `/api/quedas` e se atualiza a
+cada minuto, sem fechar o que estiver aberto.
 
+- Situação geral e três números: disponibilidade em 30 dias, resposta média em 24 h e incidentes.
 - Uma barra por dia nos últimos 30 dias: verde a partir de 99% no ar, amarela a partir de 90%, vermelha abaixo.
+  Ao apontar (ou tocar, ou usar as setas do teclado), uma dica mostra a % do dia, as falhas e as quedas.
+- Clicar num serviço abre os detalhes: disponibilidade, média e p95 em 24 h, 7 e 30 dias, um gráfico
+  do tempo de resposta por hora (24 h ou 7 dias, desenhado em SVG à mão, com as horas com falha
+  marcadas) e as quedas do serviço.
+- Histórico de incidentes por dia: quedas que começam com até 90 s de diferença viram um incidente
+  só (quando todos caem juntos, o problema costuma ser a rede da VM, e a página diz isso).
 - Os dias são os do horário de Brasília (o SQL agrupa com `at time zone 'America/Sao_Paulo'`): uma
   queda às 23h não vai para o "amanhã" do UTC.
 - Modo claro e escuro conforme o sistema; funciona no celular.
@@ -286,3 +297,4 @@ deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer
       grátis do Render dormem e a primeira visita passa dos 10 s)
 - [x] Apagar verificações antigas (guardadas por 90 dias)
 - [x] Página pública de status e publicação com Docker
+- [x] Detalhes por serviço, gráfico do tempo de resposta por hora e histórico de incidentes
