@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import io.github.lakes777.vigil.servico.ServicoRepository;
 public class DisponibilidadeService {
 
 	static final int MAXIMO_DE_DIAS = 90;
+	static final int MAXIMO_DE_HORAS = 7 * 24;
 
 	private final DisponibilidadeRepository consultas;
 	private final ServicoRepository servicos;
@@ -51,6 +53,22 @@ public class DisponibilidadeService {
 		Instant agora = Instant.now();
 		Instant desde = agora.minus(Duration.ofDays(Math.clamp(dias, 1, MAXIMO_DE_DIAS)));
 		return consultas.quedas(servicoId, desde, agora);
+	}
+
+	public List<Queda> quedas(int dias) {
+		Instant agora = Instant.now();
+		return consultas.quedas(agora.minus(Duration.ofDays(Math.clamp(dias, 1, MAXIMO_DE_DIAS))), agora);
+	}
+
+	/** Contando a hora atual, ainda pela metade: 24 horas = a atual e as 23 anteriores. */
+	public List<Hora> tempos(Long servicoId, int horas) {
+		if (!servicos.existsById(servicoId)) {
+			throw new ServicoNaoEncontradoException(servicoId);
+		}
+		Instant agora = Instant.now();
+		Instant desde = agora.truncatedTo(ChronoUnit.HOURS)
+				.minus(Duration.ofHours(Math.clamp(horas, 1, MAXIMO_DE_HORAS) - 1L));
+		return consultas.tempos(servicoId, desde, agora);
 	}
 
 }

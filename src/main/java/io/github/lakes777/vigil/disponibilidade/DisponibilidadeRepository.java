@@ -43,35 +43,60 @@ public class DisponibilidadeRepository {
 			""".formatted(contas("24h", "24 hours"), contas("7d", "7 days"), contas("30d", "30 days"));
 
 	/**
-	 * Quedas pelo truque de "ilhas" (gaps and islands): numerando as verificações em ordem
-	 * (geral) e dentro do seu tipo (no ar / fora), a diferença entre os dois números fica
+	 * Quedas pelo truque de "ilhas" (gaps and islands): numerando as verificações de cada serviço
+	 * em ordem (geral) e dentro do seu tipo (no ar / fora), a diferença entre os dois números fica
 	 * igual para todas as de uma mesma sequência seguida. Agrupar por ela junta cada queda.
-	 * A numeração olha o histórico todo (no máximo 90 dias): assim uma queda que começou
-	 * antes do período pedido aparece inteira, com o início e o motivo certos.
+	 * A numeração começa na última verificação no ar antes do período pedido (o "corte"):
+	 * assim uma queda que já estava acontecendo aparece inteira, com o início e o motivo certos,
+	 * sem numerar o histórico todo a cada visita da página (o índice por serviço e data acha o corte).
+	 * O %s é o filtro de um serviço só (ou nada, para todos).
 	 */
 	private static final String SQL_QUEDAS = """
-			with numeradas as (
-			    select id, feita_em, no_ar, erro,
-			        row_number() over (order by feita_em, id)
-			          - row_number() over (partition by no_ar order by feita_em, id) as ilha
-			    from verificacao
-			    where servico_id = :servico and feita_em <= :agora
+			with corte as (
+			    select s.id as servico_id,
+			        (select max(v.feita_em) from verificacao v
+			         where v.servico_id = s.id and v.no_ar and v.feita_em <= :desde) as desde_no_ar
+			    from servico s
+			    where true %s
+			),
+			numeradas as (
+			    select v.servico_id, v.id, v.feita_em, v.no_ar, v.erro,
+			        row_number() over (partition by v.servico_id order by v.feita_em, v.id)
+			          - row_number() over (partition by v.servico_id, v.no_ar order by v.feita_em, v.id) as ilha
+			    from verificacao v
+			    join corte c on c.servico_id = v.servico_id
+			    where v.feita_em <= :agora and (c.desde_no_ar is null or v.feita_em >= c.desde_no_ar)
 			),
 			quedas as (
-			    select ilha, min(feita_em) as inicio, max(feita_em) as ultima_falha, count(*) as falhas,
+			    select servico_id, ilha, min(feita_em) as inicio, max(feita_em) as ultima_falha, count(*) as falhas,
 			        (array_agg(erro order by feita_em, id))[1] as motivo
 			    from numeradas
 			    where not no_ar
-			    group by ilha
+			    group by servico_id, ilha
 			    having max(feita_em) > :desde
 			)
-			select q.inicio, q.ultima_falha, q.falhas, q.motivo, s.ativo,
+			select q.servico_id, s.nome, q.inicio, q.ultima_falha, q.falhas, q.motivo, s.ativo,
 			    (select min(v.feita_em) from verificacao v
-			     where v.servico_id = :servico and v.no_ar
+			     where v.servico_id = q.servico_id and v.no_ar
 			       and v.feita_em > q.ultima_falha and v.feita_em <= :agora) as fim
 			from quedas q
-			join servico s on s.id = :servico
-			order by q.inicio desc
+			join servico s on s.id = q.servico_id
+			order by q.inicio desc, s.nome
+			""";
+
+	/**
+	 * O tempo de resposta hora a hora, para o gráfico. Só as verificações no ar entram na média
+	 * (como no resumo); as falhas são contadas à parte para marcar a hora no gráfico.
+	 */
+	private static final String SQL_TEMPOS = """
+			select date_trunc('hour', feita_em) as hora,
+			    count(*) as total, count(*) filter (where not no_ar) as falhas,
+			    avg(tempo_ms) filter (where no_ar) as media,
+			    percentile_cont(0.95) within group (order by tempo_ms) filter (where no_ar) as p95
+			from verificacao
+			where servico_id = :servico and feita_em >= :desde and feita_em <= :agora
+			group by hora
+			order by hora
 			""";
 
 	/** Agrupa pelo dia no horário de Brasília: uma queda às 23h não pode cair no "amanhã" do UTC. */
@@ -105,24 +130,45 @@ public class DisponibilidadeRepository {
 	}
 
 	public List<Queda> quedas(Long servicoId, Instant desde, Instant agora) {
-		return jdbc.sql(SQL_QUEDAS)
+		return jdbc.sql(SQL_QUEDAS.formatted("and s.id = :servico"))
 				.param("servico", servicoId)
 				.param("desde", comFuso(desde))
 				.param("agora", comFuso(agora))
-				.query((linha, n) -> {
-					Instant inicio = instante(linha, "inicio");
-					Instant fim = instante(linha, "fim");
-					boolean emAndamento = fim == null && linha.getBoolean("ativo");
-					if (fim == null && !emAndamento) {
-						// Pausado enquanto estava fora: ninguém mais verifica, então a queda
-						// termina na última falha vista (senão ficaria "em andamento" para sempre)
-						fim = instante(linha, "ultima_falha");
-					}
-					long duracao = Duration.between(inicio, fim != null ? fim : agora).toSeconds();
-					return new Queda(inicio, fim, duracao, emAndamento, linha.getLong("falhas"),
-							linha.getString("motivo"));
-				})
+				.query((linha, n) -> queda(linha, agora))
 				.list();
+	}
+
+	/** As quedas de todos os serviços, da mais recente: o histórico de incidentes da página. */
+	public List<Queda> quedas(Instant desde, Instant agora) {
+		return jdbc.sql(SQL_QUEDAS.formatted(""))
+				.param("desde", comFuso(desde))
+				.param("agora", comFuso(agora))
+				.query((linha, n) -> queda(linha, agora))
+				.list();
+	}
+
+	public List<Hora> tempos(Long servicoId, Instant desde, Instant agora) {
+		return jdbc.sql(SQL_TEMPOS)
+				.param("servico", servicoId)
+				.param("desde", comFuso(desde))
+				.param("agora", comFuso(agora))
+				.query((linha, n) -> new Hora(instante(linha, "hora"), linha.getLong("total"), linha.getLong("falhas"),
+						Periodo.arredondar(decimal(linha, "media")), Periodo.arredondar(decimal(linha, "p95"))))
+				.list();
+	}
+
+	private static Queda queda(ResultSet linha, Instant agora) throws SQLException {
+		Instant inicio = instante(linha, "inicio");
+		Instant fim = instante(linha, "fim");
+		boolean emAndamento = fim == null && linha.getBoolean("ativo");
+		if (fim == null && !emAndamento) {
+			// Pausado enquanto estava fora: ninguém mais verifica, então a queda
+			// termina na última falha vista (senão ficaria "em andamento" para sempre)
+			fim = instante(linha, "ultima_falha");
+		}
+		long duracao = Duration.between(inicio, fim != null ? fim : agora).toSeconds();
+		return new Queda(linha.getLong("servico_id"), linha.getString("nome"), inicio, fim, duracao, emAndamento,
+				linha.getLong("falhas"), linha.getString("motivo"));
 	}
 
 	public List<Dia> dias(Instant desde, Instant agora) {

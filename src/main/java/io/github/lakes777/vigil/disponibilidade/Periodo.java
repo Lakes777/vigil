@@ -26,7 +26,7 @@ public record Periodo(Double disponibilidade, long verificacoes, long falhas, In
 		return Math.floor(parte * 10000.0 / total) / 100.0;
 	}
 
-	private static Integer arredondar(Double valor) {
+	static Integer arredondar(Double valor) {
 		return valor == null ? null : (int) Math.round(valor);
 	}
 

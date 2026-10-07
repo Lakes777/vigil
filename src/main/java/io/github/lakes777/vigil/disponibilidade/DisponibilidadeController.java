@@ -44,4 +44,16 @@ public class DisponibilidadeController {
 		return disponibilidade.quedas(id, dias);
 	}
 
+	@GetMapping("/api/quedas")
+	@Operation(summary = "Quedas de todos os serviços (histórico de incidentes), da mais recente; dias de 1 a 90")
+	public List<Queda> todasAsQuedas(@RequestParam(defaultValue = "30") int dias) {
+		return disponibilidade.quedas(dias);
+	}
+
+	@GetMapping("/api/servicos/{id}/tempos")
+	@Operation(summary = "Tempo de resposta hora a hora (média e p95 das verificações no ar), contando a hora atual; horas de 1 a 168")
+	public List<Hora> tempos(@PathVariable Long id, @RequestParam(defaultValue = "24") int horas) {
+		return disponibilidade.tempos(id, horas);
+	}
+
 }

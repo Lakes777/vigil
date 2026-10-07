@@ -290,6 +290,53 @@ class DisponibilidadeTest {
 	}
 
 	@Test
+	void historicoGeralJuntaAsQuedasDeTodosOsServicos() {
+		Servico a = servico("A", true);
+		Servico b = servico("B", true);
+		fora(a, horas(5), "a caiu");
+		fora(b, horas(4), "b caiu");
+		noAr(a, horas(3), 100); // termina só a queda do A
+		fora(a, dias(40), "antiga");
+		noAr(a, dias(39), 100);
+
+		List<Queda> quedas = disponibilidade.quedas(30);
+
+		assertThat(quedas).extracting(Queda::servico, Queda::motivo, Queda::emAndamento)
+				.containsExactly(tuple("B", "b caiu", true), tuple("A", "a caiu", false));
+		assertThat(quedas.getFirst().servicoId()).isEqualTo(b.getId());
+		assertThat(quedas.get(1).fim()).isCloseTo(agora.minus(horas(3)), UM_SEGUNDO);
+		assertThat(disponibilidade.quedas(90)).hasSize(3);
+	}
+
+	@Test
+	void tempoDeRespostaHoraAHora() {
+		Servico encore = servico("Encore", true);
+		Instant horaAtual = agora.truncatedTo(ChronoUnit.HOURS);
+		Instant duasHorasAtras = horaAtual.minus(horas(2));
+		verificacoes.save(new Verificacao(encore, duasHorasAtras.plusSeconds(60), new ResultadoSonda(true, 200, 100, null)));
+		verificacoes.save(new Verificacao(encore, duasHorasAtras.plusSeconds(120), new ResultadoSonda(true, 200, 300, null)));
+		// A falha conta, mas o tempo esgotado não entra na média
+		verificacoes.save(new Verificacao(encore, duasHorasAtras.plusSeconds(180),
+				new ResultadoSonda(false, null, 10_000, "erro")));
+		verificacoes.save(new Verificacao(encore, horaAtual, new ResultadoSonda(true, 200, 50, null)));
+		// 24 horas = a atual e as 23 anteriores: o começo da 23ª entra, um minuto antes não
+		Instant primeiraHora = horaAtual.minus(horas(23));
+		verificacoes.save(new Verificacao(encore, primeiraHora, new ResultadoSonda(true, 200, 70, null)));
+		verificacoes.save(new Verificacao(encore, primeiraHora.minusSeconds(60), new ResultadoSonda(true, 200, 90, null)));
+
+		List<Hora> tempos = disponibilidade.tempos(encore.getId(), 24);
+
+		assertThat(tempos).extracting(Hora::hora, Hora::verificacoes, Hora::falhas, Hora::tempoMedioMs)
+				.containsExactly(
+						tuple(primeiraHora, 1L, 0L, 70),
+						tuple(duasHorasAtras, 3L, 1L, 200),
+						tuple(horaAtual, 1L, 0L, 50));
+		// p95 de 100 e 300 (a falha fica de fora): 100 + 0,95 x 200
+		assertThat(tempos).extracting(Hora::tempoP95Ms).containsExactly(70, 290, 50);
+		assertThat(disponibilidade.tempos(encore.getId(), 1)).extracting(Hora::hora).containsExactly(horaAtual);
+	}
+
+	@Test
 	void limpezaApagaSoOHistoricoAntigo() {
 		Servico coursebook = servico("Coursebook", true);
 		noAr(coursebook, dias(91), 100);
@@ -317,6 +364,17 @@ class DisponibilidadeTest {
 				.andExpect(jsonPath("$").isEmpty());
 		mvc.perform(get("/api/servicos/999999/resumo")).andExpect(status().isNotFound());
 		mvc.perform(get("/api/servicos/999999/quedas")).andExpect(status().isNotFound());
+		mvc.perform(get("/api/servicos/" + encore.getId() + "/tempos?horas=6"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].tempoMedioMs").value(150))
+				.andExpect(jsonPath("$[0].falhas").value(0));
+		mvc.perform(get("/api/servicos/999999/tempos")).andExpect(status().isNotFound());
+		fora(encore, Duration.ofMinutes(5), "caiu");
+		mvc.perform(get("/api/quedas"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].servico").value("Encore"))
+				.andExpect(jsonPath("$[0].servicoId").value(encore.getId()))
+				.andExpect(jsonPath("$[0].emAndamento").value(true));
 	}
 
 }
