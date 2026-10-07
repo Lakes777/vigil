@@ -81,7 +81,7 @@ O CORS só libera `GET`. Cadastrar, editar, remover e "verificar agora" pedem a 
 ```bash
 curl -X POST localhost:8080/api/servicos -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $CHAVE" \
-  -d '{"nome": "Coursebook", "url": "https://painel-estudos-cyan.vercel.app"}'
+  -d '{"nome": "Coursebook", "url": "https://coursebookalp.vercel.app"}'
 ```
 
 No Swagger, a chave vai no botão **Authorize**.
