@@ -244,7 +244,12 @@ comprimidos, em `~/vigil/backups` (poucos KB cada). Na primeira vez, agendar com
 0 3 * * * /home/ubuntu/vigil/backup.sh >> /home/ubuntu/vigil/backups/backup.log 2>&1
 ```
 
-Trazer o backup mais recente para o PC, ou restaurar um:
+Cópia fora da VM: o `deploy/trazer-backup.sh` traz para o PC os backups que ainda não estão lá
+(conferidos com `gzip -t`) e guarda os últimos 30 dias em `D:\Backups\Vigil`. Roda pelo Agendador de
+Tarefas do Windows (tarefa "Vigil - trazer backup", pelo WSL), ao entrar no Windows e todo dia ao
+meio-dia; se o PC estava desligado, roda assim que ligar. O histórico de cada execução fica em `trazer.log`.
+
+Trazer na mão, ou restaurar um backup:
 
 ```bash
 scp ubuntu@<ip>:'vigil/backups/*.sql.gz' .
@@ -266,7 +271,7 @@ seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a 
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
 static/          index.html (página de status) · logo.svg
-deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh
+deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer-backup.sh
 ```
 
 ## Próximos passos
