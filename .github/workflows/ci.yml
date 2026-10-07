@@ -17,3 +17,10 @@ jobs:
           cache: maven
       - name: Testes (Testcontainers sobe o Postgres)
         run: ./mvnw -B verify
+
+  imagem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Monta a imagem Docker (confere se o Dockerfile funciona)
+        run: docker build -t vigil:ci .

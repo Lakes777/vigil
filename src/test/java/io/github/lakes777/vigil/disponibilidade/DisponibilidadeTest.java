@@ -1,6 +1,7 @@
 package io.github.lakes777.vigil.disponibilidade;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -102,6 +105,57 @@ class DisponibilidadeTest {
 		assertThat(status.ultimos7d().disponibilidade()).isEqualTo(50.0);
 		assertThat(status.ultimos30d().disponibilidade()).isEqualTo(57.14);
 		assertThat(status.ultimos30d().verificacoes()).isEqualTo(7);
+	}
+
+	@Test
+	void disponibilidadePorDiaNoHorarioDeBrasilia() throws Exception {
+		Servico encore = servico("Encore", true);
+		ZoneId brasilia = ZoneId.of("America/Sao_Paulo");
+		LocalDate hoje = LocalDate.now(brasilia);
+		Instant ontem22h = hoje.minusDays(1).atTime(22, 30).atZone(brasilia).toInstant();
+		// 22h30 de ontem em Brasília já é "hoje" em UTC (01h30): tem que contar em ontem
+		verificacoes.save(new Verificacao(encore, ontem22h, new ResultadoSonda(false, null, 10_000, "erro")));
+		verificacoes.save(new Verificacao(encore, ontem22h.plusSeconds(60), new ResultadoSonda(true, 200, 100, null)));
+		verificacoes.save(new Verificacao(encore, ontem22h.plusSeconds(120), new ResultadoSonda(true, 200, 100, null)));
+		verificacoes.save(new Verificacao(encore, hoje.minusDays(40).atStartOfDay(brasilia).toInstant(),
+				new ResultadoSonda(true, 200, 100, null)));
+
+		List<Dia> dias = disponibilidade.dias(30);
+
+		assertThat(dias).singleElement().satisfies(dia -> {
+			assertThat(dia.dia()).isEqualTo(hoje.minusDays(1));
+			assertThat(dia.disponibilidade()).isEqualTo(66.66);
+			assertThat(dia.verificacoes()).isEqualTo(3);
+			assertThat(dia.falhas()).isEqualTo(1);
+		});
+		assertThat(disponibilidade.dias(1)).isEmpty();
+		mvc.perform(get("/api/status/dias?dias=7"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].dia").value(hoje.minusDays(1).toString()))
+				.andExpect(jsonPath("$[0].servicoId").value(encore.getId()));
+	}
+
+	@Test
+	void porDiaRespeitaOPrimeiroDiaEOLimiteDeDias() {
+		Servico encore = servico("Encore", true);
+		Servico hanami = servico("Hanami", true);
+		ZoneId brasilia = ZoneId.of("America/Sao_Paulo");
+		LocalDate hoje = LocalDate.now(brasilia);
+		Instant inicioDoPrimeiroDia = hoje.minusDays(29).atStartOfDay(brasilia).toInstant();
+		// Meia-noite do 1º dos 30 dias entra; um minuto antes, não
+		verificacoes.save(new Verificacao(encore, inicioDoPrimeiroDia, new ResultadoSonda(true, 200, 100, null)));
+		verificacoes.save(new Verificacao(encore, inicioDoPrimeiroDia.minusSeconds(60),
+				new ResultadoSonda(true, 200, 100, null)));
+		verificacoes.save(new Verificacao(hanami, inicioDoPrimeiroDia.plusSeconds(3600),
+				new ResultadoSonda(false, null, 10_000, "erro")));
+
+		List<Dia> dias = disponibilidade.dias(30);
+
+		assertThat(dias).extracting(Dia::servicoId, Dia::dia, Dia::verificacoes).containsExactly(
+				tuple(encore.getId(), hoje.minusDays(29), 1L),
+				tuple(hanami.getId(), hoje.minusDays(29), 1L));
+		assertThat(disponibilidade.dias(0)).isEmpty();
+		assertThat(disponibilidade.dias(500)).hasSize(3);
 	}
 
 	@Test

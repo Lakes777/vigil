@@ -26,6 +26,12 @@ public class DisponibilidadeController {
 		return disponibilidade.status();
 	}
 
+	@GetMapping("/api/status/dias")
+	@Operation(summary = "Disponibilidade de cada serviço por dia (horário de Brasília), contando hoje; dias de 1 a 90")
+	public List<Dia> dias(@RequestParam(defaultValue = "30") int dias) {
+		return disponibilidade.dias(dias);
+	}
+
 	@GetMapping("/api/servicos/{id}/resumo")
 	@Operation(summary = "Situação atual e disponibilidade de um serviço")
 	public StatusServico resumo(@PathVariable Long id) {

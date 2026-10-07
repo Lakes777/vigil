@@ -2,6 +2,8 @@ package io.github.lakes777.vigil.disponibilidade;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -32,6 +34,14 @@ public class DisponibilidadeService {
 				.filter(status -> status.id().equals(servicoId))
 				.findFirst()
 				.orElseThrow(() -> new ServicoNaoEncontradoException(servicoId));
+	}
+
+	/** Os últimos dias, contando hoje, a partir da meia-noite de Brasília. */
+	public List<Dia> dias(int dias) {
+		Instant agora = Instant.now();
+		ZoneId brasilia = ZoneId.of("America/Sao_Paulo");
+		LocalDate primeiro = LocalDate.now(brasilia).minusDays(Math.clamp(dias, 1, MAXIMO_DE_DIAS) - 1L);
+		return consultas.dias(primeiro.atStartOfDay(brasilia).toInstant(), agora);
 	}
 
 	public List<Queda> quedas(Long servicoId, int dias) {

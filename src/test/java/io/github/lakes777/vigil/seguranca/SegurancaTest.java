@@ -1,12 +1,14 @@
 package io.github.lakes777.vigil.seguranca;
 
 import static io.github.lakes777.vigil.Admin.comChave;
+import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +62,11 @@ class SegurancaTest {
 		mvc.perform(get("/api/servicos/" + id + "/verificacoes")).andExpect(status().isOk());
 		mvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
 		mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+		// A página de status
+		mvc.perform(get("/")).andExpect(status().isOk()).andExpect(forwardedUrl("index.html"));
+		mvc.perform(get("/index.html")).andExpect(status().isOk())
+				.andExpect(content().string(containsString("Status dos projetos")));
+		mvc.perform(get("/api/status/dias")).andExpect(status().isOk());
 	}
 
 	@Test

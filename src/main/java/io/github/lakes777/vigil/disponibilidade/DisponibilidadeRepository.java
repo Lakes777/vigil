@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -73,6 +74,16 @@ public class DisponibilidadeRepository {
 			order by q.inicio desc
 			""";
 
+	/** Agrupa pelo dia no horário de Brasília: uma queda às 23h não pode cair no "amanhã" do UTC. */
+	private static final String SQL_DIAS = """
+			select servico_id, (feita_em at time zone 'America/Sao_Paulo')::date as dia,
+			    count(*) as total, count(*) filter (where no_ar) as no_ar
+			from verificacao
+			where feita_em >= :desde and feita_em <= :agora
+			group by servico_id, dia
+			order by servico_id, dia
+			""";
+
 	private final JdbcClient jdbc;
 
 	public DisponibilidadeRepository(JdbcClient jdbc) {
@@ -110,6 +121,19 @@ public class DisponibilidadeRepository {
 					long duracao = Duration.between(inicio, fim != null ? fim : agora).toSeconds();
 					return new Queda(inicio, fim, duracao, emAndamento, linha.getLong("falhas"),
 							linha.getString("motivo"));
+				})
+				.list();
+	}
+
+	public List<Dia> dias(Instant desde, Instant agora) {
+		return jdbc.sql(SQL_DIAS)
+				.param("desde", comFuso(desde))
+				.param("agora", comFuso(agora))
+				.query((linha, n) -> {
+					long total = linha.getLong("total");
+					long noAr = linha.getLong("no_ar");
+					return new Dia(linha.getLong("servico_id"), linha.getObject("dia", LocalDate.class),
+							Periodo.porcentagem(noAr, total), total, total - noAr);
 				})
 				.list();
 	}

@@ -1,0 +1,74 @@
+# Produção na VM da Oracle (1 GB de memória, dividida com o Sidekick).
+# Segredos no arquivo .env ao lado (fora do git): VIGIL_ADMIN_CHAVE, DB_SENHA, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, DOMINIO.
+# Logs com rotação: sem isso o arquivo de log do Docker cresce sem limite e enche o disco
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  banco:
+    logging: *logs
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vigil
+      POSTGRES_USER: vigil
+      POSTGRES_PASSWORD: ${DB_SENHA:?defina DB_SENHA no .env}
+    # Configurado para pouca memória: o Vigil usa no máximo 5 conexões
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=20", "-c", "work_mem=2MB"]
+    volumes:
+      - dados:/var/lib/postgresql/data
+    mem_limit: 160m
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "vigil", "-d", "vigil"]
+      interval: 10s
+      retries: 10
+    # Sem "ports": o banco só é acessível de dentro desta rede, nunca da internet
+
+  api:
+    image: vigil:latest
+    logging: *logs
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://banco:5432/vigil
+      DB_USUARIO: vigil
+      DB_SENHA: ${DB_SENHA}
+      VIGIL_ADMIN_CHAVE: ${VIGIL_ADMIN_CHAVE:?defina VIGIL_ADMIN_CHAVE no .env}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
+      # O Caddy fica na frente: assim o Spring sabe que o endereço original era https
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "localhost:8080/actuator/health"]
+      interval: 15s
+      start_period: 60s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    logging: *logs
+    restart: unless-stopped
+    # Espera a API ficar saudável: sem isso, quem abrisse a página durante a subida via um erro 502
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_dados:/data
+    mem_limit: 64m
+
+volumes:
+  dados:
+  caddy_dados:

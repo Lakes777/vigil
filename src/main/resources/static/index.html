@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vigil · Status</title>
+<meta name="description" content="Status dos projetos de Lakes777: quais estão no ar e a disponibilidade nos últimos 30 dias.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --fundo: #f4f5f6; --cartao: #ffffff; --borda: #dfe2e5; --texto: #1e2124; --suave: #5f676e;
+    --vazio: #d5d9dd; --no-ar: #2f9e5b; --parcial: #d29b2a; --fora: #d0463b; --pausado: #8a9298; --destaque: #2f6fb5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundo: #16181a; --cartao: #1e2124; --borda: #2e3236; --texto: #e4e7e9; --suave: #9aa2a8;
+      --vazio: #33383d; --no-ar: #3fb36c; --parcial: #e0aa3e; --fora: #e5584c; --pausado: #7d858b; --destaque: #6aa4e6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+  header img { width: 44px; height: 44px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  header p { margin: 0; color: var(--suave); font-size: 14px; }
+  .geral { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 10px;
+    background: var(--cartao); border: 1px solid var(--borda); margin-bottom: 20px; font-weight: 600; }
+  .ponto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--pausado); }
+  .NO_AR .ponto, .ponto.NO_AR { background: var(--no-ar); }
+  .FORA .ponto, .ponto.FORA { background: var(--fora); }
+  .lista { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; }
+  .servico { padding: 16px; border-top: 1px solid var(--borda); }
+  .servico:first-child { border-top: 0; }
+  .linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .nome { font-weight: 600; color: inherit; text-decoration: none; }
+  a.nome:hover { color: var(--destaque); text-decoration: underline; }
+  .situacao { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); }
+  .numeros { margin: 2px 0 0; font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
+  .barras { display: flex; gap: 2px; height: 30px; margin: 10px 0 4px; }
+  .barras span { flex: 1; border-radius: 2px; background: var(--vazio); min-width: 0; }
+  .barras .ok { background: var(--no-ar); }
+  .barras .parcial { background: var(--parcial); }
+  .barras .ruim { background: var(--fora); }
+  .legenda { display: flex; justify-content: space-between; font-size: 12px; color: var(--suave); }
+  @media (max-width: 480px) { .barras { gap: 1px; height: 26px; } }
+  footer { margin-top: 20px; font-size: 13px; color: var(--suave); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  footer a { color: var(--destaque); }
+  .aviso { padding: 16px; color: var(--suave); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo.svg" alt="">
+    <div>
+      <h1>Vigil</h1>
+      <p>Status dos projetos de Lakes777</p>
+    </div>
+  </header>
+
+  <div class="geral" id="geral" role="status"><span class="ponto"></span><span>Carregando…</span></div>
+  <section class="lista" id="lista" aria-label="Serviços"></section>
+
+  <footer>
+    <span id="atualizado"></span>
+    <a href="docs">API (Swagger)</a>
+    <a href="https://github.com/Lakes777/vigil">Código no GitHub</a>
+  </footer>
+</main>
+
+<script>
+  const DIAS = 30;
+  const NOMES = { NO_AR: "No ar", FORA: "Fora do ar", PAUSADO: "Pausado", SEM_DADOS: "Sem dados ainda" };
+  const porcento = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dataCurta = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
+  const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  // Os nomes vêm do banco: o texto entra sempre por textContent, nunca como HTML
+  function el(tag, classe, texto) {
+    const no = document.createElement(tag);
+    if (classe) no.className = classe;
+    if (texto !== undefined) no.textContent = texto;
+    return no;
+  }
+
+  /** Os últimos 30 dias no horário de Brasília, do mais antigo para hoje, como "aaaa-mm-dd". */
+  function ultimosDias() {
+    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const base = new Date(hoje + "T12:00:00Z");
+    return Array.from({ length: DIAS }, (_, i) => {
+      const d = new Date(base);
+      d.setUTCDate(base.getUTCDate() - (DIAS - 1 - i));
+      return d.toISOString().slice(0, 10);
+    });
+  }
+
+  function barra(dia, dado) {
+    const b = el("span");
+    const rotulo = dataCurta.format(new Date(dia + "T12:00:00Z"));
+    if (!dado) {
+      b.title = rotulo + ": sem verificações";
+    } else {
+      const d = dado.disponibilidade;
+      b.className = d >= 99 ? "ok" : d >= 90 ? "parcial" : "ruim";
+      b.title = rotulo + ": " + porcento.format(d) + "% no ar (" + dado.falhas + " falha"
+        + (dado.falhas === 1 ? "" : "s") + " em " + dado.verificacoes + ")";
+    }
+    b.setAttribute("aria-label", b.title);
+    return b;
+  }
+
+  function servico(status, url, diasDoServico, dias) {
+    const linha = el("article", "servico " + status.situacao);
+    const topo = el("div", "linha");
+    const nome = el(url ? "a" : "span", "nome", status.nome);
+    if (url) { nome.href = url; nome.rel = "noopener"; }
+    const situacao = el("span", "situacao");
+    situacao.append(el("span", "ponto " + status.situacao), NOMES[status.situacao] || status.situacao);
+    topo.append(nome, situacao);
+
+    const barras = el("div", "barras");
+    barras.setAttribute("role", "img");
+    barras.setAttribute("aria-label", "Disponibilidade por dia nos últimos " + DIAS + " dias");
+    dias.forEach(dia => barras.append(barra(dia, diasDoServico.get(dia))));
+
+    const trinta = status.ultimos30d.disponibilidade;
+    const media = status.ultimas24h.tempoMedioMs;
+    const numeros = el("p", "numeros", trinta == null ? "Sem verificações ainda"
+      : porcento.format(trinta) + "% no ar em 30 dias" + (media == null ? "" : " · " + media + " ms em média"));
+
+    const legenda = el("div", "legenda");
+    legenda.append(el("span", "", (DIAS - 1) + " dias atrás"), el("span", "", "hoje"));
+    legenda.setAttribute("aria-hidden", "true");
+    linha.append(topo, numeros, barras, legenda);
+    return linha;
+  }
+
+  function resumoGeral(lista) {
+    const monitorados = lista.filter(s => s.situacao !== "PAUSADO");
+    const fora = monitorados.filter(s => s.situacao === "FORA").length;
+    const noAr = monitorados.filter(s => s.situacao === "NO_AR").length;
+    const geral = document.getElementById("geral");
+    // Verde só quando há o que mostrar: sem nenhum no ar (recém-publicado, tudo pausado) fica neutro
+    geral.className = "geral " + (fora ? "FORA" : noAr ? "NO_AR" : "");
+    geral.lastElementChild.textContent = fora === 1 ? "1 serviço fora do ar"
+      : fora > 1 ? fora + " serviços fora do ar"
+      : monitorados.length === 0 ? "Nenhum serviço monitorado no momento"
+      : noAr === monitorados.length ? "Todos os serviços estão no ar"
+      : "Aguardando as primeiras verificações";
+  }
+
+  async function json(caminho) {
+    const resposta = await fetch(caminho, { headers: { Accept: "application/json" } });
+    if (!resposta.ok) throw new Error(caminho + ": " + resposta.status);
+    return resposta.json();
+  }
+
+  async function carregar() {
+    try {
+      const [status, servicos, dias] = await Promise.all(
+        [json("api/status"), json("api/servicos"), json("api/status/dias?dias=" + DIAS)]);
+      const urls = new Map(servicos.map(s => [s.id, s.url]));
+      const porServico = new Map();
+      dias.forEach(d => {
+        if (!porServico.has(d.servicoId)) porServico.set(d.servicoId, new Map());
+        porServico.get(d.servicoId).set(d.dia, d);
+      });
+      // Pausados vão para o fim da lista
+      status.sort((a, b) => (a.situacao === "PAUSADO") - (b.situacao === "PAUSADO"));
+      const datas = ultimosDias();
+      const lista = document.getElementById("lista");
+      lista.replaceChildren(...status.map(s =>
+        servico(s, urls.get(s.id), porServico.get(s.id) || new Map(), datas)));
+      if (status.length === 0) lista.replaceChildren(el("p", "aviso", "Nenhum serviço cadastrado ainda."));
+      resumoGeral(status);
+      document.getElementById("atualizado").textContent = "Atualizado às " + hora.format(new Date())
+        + " · verifica a cada 5 min";
+    } catch (erro) {
+      const geral = document.getElementById("geral");
+      geral.className = "geral";
+      geral.lastElementChild.textContent = "Não foi possível carregar o status agora. Tentando de novo em 1 minuto.";
+    }
+  }
+
+  carregar();
+  setInterval(carregar, 60_000);
+</script>
+</body>
+</html>

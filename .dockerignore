@@ -1,0 +1,7 @@
+target
+config
+deploy
+docs
+.git
+.github
+*.md
