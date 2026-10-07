@@ -8,7 +8,7 @@
 
 API em Java com Spring Boot que verifica de tempos em tempos se os meus sites e APIs estão no ar,
 guarda o histórico de cada verificação e calcula a disponibilidade de cada serviço. Quando algo
-cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/bot-utilidades)).
+cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/sidekick)).
 
 **No ar:** https://147-15-40-173.sslip.io (página de status) · [API](https://147-15-40-173.sslip.io/docs)
 
@@ -150,7 +150,7 @@ e `vigil.verificacao.ligado` (desligado nos testes).
 ## Avisos pelo Telegram
 
 O Vigil manda a mensagem pela API do Telegram com o token do
-[Sidekick](https://github.com/Lakes777/bot-utilidades): o aviso chega na conversa com o bot, sem
+[Sidekick](https://github.com/Lakes777/sidekick): o aviso chega na conversa com o bot, sem
 mudar nada nele.
 
 ```
@@ -217,7 +217,7 @@ cada minuto, sem fechar o que estiver aberto.
 ## Publicação
 
 Roda numa VM grátis da Oracle Cloud (1 GB de memória, dividida com o
-[Sidekick](https://github.com/Lakes777/bot-utilidades)), com três contêineres (`deploy/compose.yaml`):
+[Sidekick](https://github.com/Lakes777/sidekick)), com três contêineres (`deploy/compose.yaml`):
 
 | Contêiner | O que faz | Limite de memória |
 |---|---|---|
