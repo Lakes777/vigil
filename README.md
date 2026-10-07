@@ -235,12 +235,20 @@ Primeira vez na VM:
 2. Abrir as portas 80 e 443 na Security List da VCN (painel da Oracle) e no firewall da VM (`iptables`).
 3. Criar `~/vigil/.env` (com `chmod 600`) com `DOMINIO`, `DB_SENHA`, `VIGIL_ADMIN_CHAVE`,
    `TELEGRAM_TOKEN` e `TELEGRAM_CHAT_ID`. Esse arquivo nunca sai da VM.
-4. Rodar `deploy/publicar.sh`.
+4. Rodar `deploy/publicar.sh` e agendar o backup (abaixo).
 
-Backup do banco:
+Backup: o `deploy/backup.sh` roda todo dia às 3h pelo cron da VM e guarda os últimos 7 dias,
+comprimidos, em `~/vigil/backups` (poucos KB cada). Na primeira vez, agendar com `crontab -e`:
+
+```
+0 3 * * * /home/ubuntu/vigil/backup.sh >> /home/ubuntu/vigil/backups/backup.log 2>&1
+```
+
+Trazer o backup mais recente para o PC, ou restaurar um:
 
 ```bash
-ssh ubuntu@<ip> 'cd vigil && docker compose exec -T banco pg_dump -U vigil vigil' > vigil-backup.sql
+scp ubuntu@<ip>:'vigil/backups/*.sql.gz' .
+gunzip -c vigil-AAAA-MM-DD.sql.gz | ssh ubuntu@<ip> 'cd vigil && docker compose exec -T banco psql -U vigil vigil'
 ```
 
 ## Organização
@@ -258,7 +266,7 @@ seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a 
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
 static/          index.html (página de status) · logo.svg
-deploy/          compose.yaml · Caddyfile · publicar.sh
+deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh
 ```
 
 ## Próximos passos

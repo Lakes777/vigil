@@ -19,7 +19,7 @@ docker build -q -t vigil:latest .
 
 echo "Enviando para a VM (comprimida)..."
 docker save vigil:latest | gzip | ssh -i "$CHAVE_SSH" "$VM" "gunzip | docker load -q"
-scp -q -i "$CHAVE_SSH" deploy/compose.yaml deploy/Caddyfile "$VM:$PASTA/"
+scp -q -i "$CHAVE_SSH" deploy/compose.yaml deploy/Caddyfile deploy/backup.sh "$VM:$PASTA/"
 
 echo "Reiniciando..."
 ssh -i "$CHAVE_SSH" "$VM" "cd $PASTA && docker compose up -d --remove-orphans && docker image prune -f >/dev/null"
