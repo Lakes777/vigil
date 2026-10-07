@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -67,6 +68,25 @@ class SegurancaTest {
 		mvc.perform(get("/index.html")).andExpect(status().isOk())
 				.andExpect(content().string(containsString("Status dos projetos")));
 		mvc.perform(get("/api/status/dias")).andExpect(status().isOk());
+	}
+
+	@Test
+	void oPortfolioPodeLerPeloNavegadorMasNaoAlterar() throws Exception {
+		String portfolio = "https://lakes777.github.io";
+		mvc.perform(get("/api/status").header(HttpHeaders.ORIGIN, portfolio))
+				.andExpect(status().isOk())
+				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, portfolio));
+		// Outro site não recebe a permissão (o navegador bloqueia a leitura)
+		mvc.perform(get("/api/status").header(HttpHeaders.ORIGIN, "https://outro.exemplo.com"))
+				.andExpect(status().isForbidden());
+		// Pergunta prévia do navegador para um DELETE: recusada, mesmo vindo do portfólio
+		mvc.perform(options("/api/servicos/" + id).header(HttpHeaders.ORIGIN, portfolio)
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "DELETE"))
+				.andExpect(status().isForbidden());
+		mvc.perform(options("/api/status").header(HttpHeaders.ORIGIN, portfolio)
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"))
+				.andExpect(status().isOk())
+				.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET"));
 	}
 
 	@Test

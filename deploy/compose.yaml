@@ -41,6 +41,8 @@ services:
       VIGIL_ADMIN_CHAVE: ${VIGIL_ADMIN_CHAVE:?defina VIGIL_ADMIN_CHAVE no .env}
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      # Sites que podem ler a API pelo navegador (o portfólio mostra um selo "no ar")
+      VIGIL_CORS_ORIGENS: ${VIGIL_CORS_ORIGENS:-https://lakes777.github.io}
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
       # O Caddy fica na frente: assim o Spring sabe que o endereço original era https
       SERVER_FORWARD_HEADERS_STRATEGY: framework

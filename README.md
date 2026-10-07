@@ -74,7 +74,9 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 | `GET` | `/api/quedas?dias=30` | Quedas de todos os serviços (o histórico de incidentes da página) |
 | `GET` | `/api/servicos/{id}/tempos?horas=24` | Tempo de resposta hora a hora: média e p95 das verificações no ar (1 a 168 horas) |
 
-Ler (`GET`) é público. Cadastrar, editar, remover e "verificar agora" pedem a chave de admin:
+Ler (`GET`) é público, e outro site pode ler pelo navegador (CORS) se estiver em `vigil.cors.origens`
+(variável `VIGIL_CORS_ORIGENS`; padrão: o meu portfólio, que mostra um selo "no ar" em cada projeto).
+O CORS só libera `GET`. Cadastrar, editar, remover e "verificar agora" pedem a chave de admin:
 
 ```bash
 curl -X POST localhost:8080/api/servicos -H 'Content-Type: application/json' \
@@ -245,7 +247,8 @@ Primeira vez na VM:
 1. Instalar o Docker: `sudo apt install docker.io docker-compose-v2` e `sudo usermod -aG docker ubuntu`.
 2. Abrir as portas 80 e 443 na Security List da VCN (painel da Oracle) e no firewall da VM (`iptables`).
 3. Criar `~/vigil/.env` (com `chmod 600`) com `DOMINIO`, `DB_SENHA`, `VIGIL_ADMIN_CHAVE`,
-   `TELEGRAM_TOKEN` e `TELEGRAM_CHAT_ID`. Esse arquivo nunca sai da VM.
+   `TELEGRAM_TOKEN` e `TELEGRAM_CHAT_ID` (e, se quiser mudar quem lê a API pelo navegador,
+   `VIGIL_CORS_ORIGENS`). Esse arquivo nunca sai da VM.
 4. Rodar `deploy/publicar.sh` e agendar o backup (abaixo).
 
 Backup: o `deploy/backup.sh` roda todo dia às 3h pelo cron da VM e guarda os últimos 7 dias,
@@ -298,3 +301,4 @@ deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer
 - [x] Apagar verificações antigas (guardadas por 90 dias)
 - [x] Página pública de status e publicação com Docker
 - [x] Detalhes por serviço, gráfico do tempo de resposta por hora e histórico de incidentes
+- [x] Leitura pelo navegador a partir do portfólio (CORS só com `GET`), que mostra um selo "no ar" em cada projeto
