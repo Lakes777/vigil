@@ -68,6 +68,8 @@ services:
       DOMINIO: ${DOMINIO:?defina DOMINIO no .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Sites de outros projetos da VM (veja o Caddyfile)
+      - ./sites:/etc/caddy/sites:ro
       - caddy_dados:/data
     mem_limit: 64m
 

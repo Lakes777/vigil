@@ -19,6 +19,7 @@ docker build -q -t vigil:latest .
 
 echo "Enviando para a VM (comprimida)..."
 docker save vigil:latest | gzip | ssh -i "$CHAVE_SSH" "$VM" "gunzip | docker load -q"
+ssh -i "$CHAVE_SSH" "$VM" "mkdir -p $PASTA/sites"
 scp -q -i "$CHAVE_SSH" deploy/compose.yaml deploy/Caddyfile deploy/backup.sh "$VM:$PASTA/"
 
 echo "Reiniciando..."

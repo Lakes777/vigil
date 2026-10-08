@@ -257,6 +257,9 @@ Roda numa VM grátis da Oracle Cloud (1 GB de memória, dividida com o
 | `api` | o Vigil | 384 MB |
 | `caddy` | recebe na porta 443, pega e renova sozinho o certificado HTTPS (Let's Encrypt) | 64 MB |
 
+- **Vizinho na mesma VM:** o [Pursuit](https://github.com/Lakes777/pursuit) usa este Postgres (banco e
+  usuário próprios; o banco do Vigil só aceita o usuário dele) e este Caddy, que importa os sites de
+  outros projetos de `~/vigil/sites/*.caddy` (a pasta pode estar vazia).
 - **Imagem em duas etapas** (`Dockerfile`): a primeira compila com JDK e Maven, a segunda só tem o
   JRE e o `.jar`, roda sem root. Os segredos ficam de fora (`.dockerignore`).
 - **Memória medida:** com as opções padrão a API chegava a 370 MB, colada no limite. Com

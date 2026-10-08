@@ -9,3 +9,7 @@
 		-Server
 	}
 }
+
+# Outros projetos na mesma VM (hoje o Pursuit) põem o próprio site em ~/vigil/sites/<nome>.caddy;
+# a pasta pode estar vazia. Assim o Vigil não precisa saber deles.
+import /etc/caddy/sites/*.caddy
