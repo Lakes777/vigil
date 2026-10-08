@@ -109,6 +109,21 @@ public class DisponibilidadeRepository {
 			order by servico_id, dia
 			""";
 
+	/**
+	 * Os números de cada serviço entre dois instantes (o fim fica de fora). O left join traz
+	 * também quem não teve nenhuma verificação no intervalo, com total 0. Sem p95: o resumo
+	 * não usa, e ordenar a semana inteira de todos os serviços a cada prévia seria à toa.
+	 */
+	private static final String SQL_ENTRE = """
+			select s.id, s.nome, s.ativo,
+			    count(v.id) as total, count(v.id) filter (where v.no_ar) as no_ar,
+			    avg(v.tempo_ms) filter (where v.no_ar) as media
+			from servico s
+			left join verificacao v on v.servico_id = s.id and v.feita_em >= :desde and v.feita_em < :ate
+			group by s.id
+			order by s.nome
+			""";
+
 	private final JdbcClient jdbc;
 
 	public DisponibilidadeRepository(JdbcClient jdbc) {
@@ -126,6 +141,16 @@ public class DisponibilidadeRepository {
 						periodo(linha, "24h"),
 						periodo(linha, "7d"),
 						periodo(linha, "30d")))
+				.list();
+	}
+
+	public List<ServicoNoPeriodo> entre(Instant desde, Instant ate) {
+		return jdbc.sql(SQL_ENTRE)
+				.param("desde", comFuso(desde))
+				.param("ate", comFuso(ate))
+				.query((linha, n) -> new ServicoNoPeriodo(linha.getLong("id"), linha.getString("nome"),
+						linha.getBoolean("ativo"), Periodo.de(linha.getLong("total"), linha.getLong("no_ar"),
+								decimal(linha, "media"), null)))
 				.list();
 	}
 

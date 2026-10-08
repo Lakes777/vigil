@@ -60,6 +60,19 @@ public class DisponibilidadeService {
 		return consultas.quedas(agora.minus(Duration.ofDays(Math.clamp(dias, 1, MAXIMO_DE_DIAS))), agora);
 	}
 
+	/** Os números de cada serviço de desde (incluído) até ate (fora), para o resumo da semana. */
+	public List<ServicoNoPeriodo> entre(Instant desde, Instant ate) {
+		return consultas.entre(desde, ate);
+	}
+
+	/**
+	 * As quedas que tocam o intervalo, vistas de ate: uma que só terminou depois aparece
+	 * sem fim (em andamento), e uma que começou antes aparece com o início verdadeiro.
+	 */
+	public List<Queda> quedasEntre(Instant desde, Instant ate) {
+		return consultas.quedas(desde, ate);
+	}
+
 	/** Contando a hora atual, ainda pela metade: 24 horas = a atual e as 23 anteriores. */
 	public List<Hora> tempos(Long servicoId, int horas) {
 		if (!servicos.existsById(servicoId)) {

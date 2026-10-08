@@ -8,7 +8,8 @@
 
 API em Java com Spring Boot que verifica de tempos em tempos se os meus sites e APIs estão no ar,
 guarda o histórico de cada verificação e calcula a disponibilidade de cada serviço. Quando algo
-cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/sidekick)).
+cai ou volta, avisa pelo Telegram (pelo [Sidekick](https://github.com/Lakes777/sidekick)), e toda
+segunda manda o resumo da semana.
 
 **No ar:** https://147-15-40-173.sslip.io (página de status) · [API](https://147-15-40-173.sslip.io/docs)
 
@@ -73,10 +74,12 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 | `GET` | `/api/servicos/{id}/quedas?dias=30` | Quedas da mais recente para a mais antiga (1 a 90 dias) |
 | `GET` | `/api/quedas?dias=30` | Quedas de todos os serviços (o histórico de incidentes da página) |
 | `GET` | `/api/servicos/{id}/tempos?horas=24` | Tempo de resposta hora a hora: média e p95 das verificações no ar (1 a 168 horas) |
+| `GET` | `/api/resumo-semanal` | Prévia do resumo da última semana inteira (segunda a domingo) |
+| `POST` | `/api/resumo-semanal/enviar` | Manda o resumo pelo Telegram agora (para testar; não conta como o de segunda) |
 
 Ler (`GET`) é público, e outro site pode ler pelo navegador (CORS) se estiver em `vigil.cors.origens`
 (variável `VIGIL_CORS_ORIGENS`; padrão: o meu portfólio, que mostra um selo "no ar" em cada projeto).
-O CORS só libera `GET`. Cadastrar, editar, remover e "verificar agora" pedem a chave de admin:
+O CORS só libera `GET`. Cadastrar, editar, remover, "verificar agora" e mandar o resumo pedem a chave de admin:
 
 ```bash
 curl -X POST localhost:8080/api/servicos -H 'Content-Type: application/json' \
@@ -172,6 +175,35 @@ Vigil: Hanami voltou. Ficou fora por 12 min (desde 14:32 de 06/10).
 - Um problema nos avisos nunca derruba a verificação: vai só para o log.
 - O token só é usado se tiver o formato do BotFather, e nunca aparece no log.
 - Nos testes, o Telegram é um WireMock; o de verdade nunca é chamado.
+
+### Resumo da semana
+
+Toda segunda às 9h (Brasília), a semana anterior inteira, de segunda 0h a domingo 23h59:
+
+```
+Vigil: resumo da semana de 28/09 a 04/10.
+
+Hanami: 99,87% no ar, 1 queda (35 min fora), resposta média de 318 ms.
+Spendwise: 100% no ar, sem quedas, resposta média de 210 ms.
+
+Maior queda: Hanami, 35 min (começou em 29/09 às 10:05).
+```
+
+- **Sai uma vez só, e não se perde.** O agendador tenta de hora em hora; a semana enviada fica
+  marcada no banco (tabela `resumo_semanal`, chave primária na segunda-feira da semana). Se a VM
+  estiver fora às 9h ou o Telegram falhar, a marca é desfeita e a próxima hora manda; um reinício
+  da API não repete a mensagem. Duas tentativas ao mesmo tempo: o `insert ... on conflict do nothing`
+  deixa só uma passar.
+- **Quedas** contam como nos avisos (2 falhas seguidas ou mais); a falha solta de um site do Render
+  acordando entra só na disponibilidade. O tempo fora é só a parte dentro da semana: uma queda que
+  começou no domingo anterior conta a partir de segunda 0h.
+- Serviço pausado a semana toda fica de fora; uma semana sem nenhuma verificação não gera mensagem.
+- Sem Telegram configurado, nada é marcado: a semana fica esperando o token ser corrigido.
+- Com a tabela vazia (primeira publicação, ou um backup antigo restaurado), a última semana sai na
+  próxima hora cheia, sem esperar a segunda.
+- Limite conhecido: pausar um serviço no meio de uma queda e reativá-lo dias depois junta tudo numa
+  queda só (não há verificações no meio para separar), e ela pode aparecer como a maior da semana.
+- Configurável: `vigil.resumo.hora` (padrão 9) e `vigil.resumo.tentativas` (cron, padrão de hora em hora).
 
 ## Disponibilidade e quedas
 
@@ -279,8 +311,10 @@ verificacao/     Sonda (acessa a URL e mede) · Verificador (quem verificar, gra
                  Agendador (@Scheduled) · Verificacao (entidade) · VerificacaoController (rotas)
                  LimiteManual (uma verificação manual a cada 10 s)
 disponibilidade/ DisponibilidadeRepository (SQL dos números e das quedas) · DisponibilidadeService
-                 DisponibilidadeController · Periodo, Queda, StatusServico, Dia (JSON)
+                 DisponibilidadeController · Periodo, Queda, StatusServico, Dia, ServicoNoPeriodo (JSON)
 alerta/          Alertas (quando avisar) · AlertaRepository (estado no banco) · Telegram (envio)
+                 ResumoSemanal (monta e manda o resumo) · ResumoRepository (semanas enviadas)
+                 ResumoController (prévia e envio manual) · ResumoDaSemana (JSON)
 seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a chave)
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
@@ -302,3 +336,4 @@ deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer
 - [x] Página pública de status e publicação com Docker
 - [x] Detalhes por serviço, gráfico do tempo de resposta por hora e histórico de incidentes
 - [x] Leitura pelo navegador a partir do portfólio (CORS só com `GET`), que mostra um selo "no ar" em cada projeto
+- [x] Resumo da semana pelo Telegram toda segunda, sem repetir nem perder a semana
