@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.svg" alt="Logo do Vigil: barras verticais com dois olhos vazados" width="120"></p>
+<p align="center"><img src="docs/logo.svg" alt="Logo do Vigil: a linha de um monitor de batimentos, em violeta" width="120"></p>
 
 # Vigil
 
@@ -13,7 +13,7 @@ segunda manda o resumo da semana.
 
 **No ar:** https://147-15-40-173.sslip.io (página de status) · [API](https://147-15-40-173.sslip.io/docs)
 
-![Página de status do Vigil: cada serviço com a situação, a disponibilidade e uma barra por dia](docs/status.png)
+![Página de status do Vigil no tema Pulso: o monitor no topo com uma batida por serviço, a situação geral, os números e cada serviço com uma barra por dia](docs/status.png)
 
 ## Tecnologias
 
@@ -61,10 +61,10 @@ Testes (o próprio Testcontainers sobe um Postgres temporário):
 
 | Método | Rota | O que faz |
 |---|---|---|
-| `GET` | `/api/servicos` | Lista os serviços em ordem alfabética |
+| `GET` | `/api/servicos` | Lista os serviços pela `ordem` (empate, pelo nome) |
 | `GET` | `/api/servicos/{id}` | Busca um serviço |
-| `POST` | `/api/servicos` | Cadastra (`nome`, `url`; opcionais `intervaloSegundos`, padrão 300, e `ativo`) |
-| `PUT` | `/api/servicos/{id}` | Edita (`nome` e `url` obrigatórios; `intervaloSegundos` e `ativo` omitidos mantêm o valor atual) |
+| `POST` | `/api/servicos` | Cadastra (`nome`, `url`; opcionais `intervaloSegundos`, padrão 300, `ativo`, `ordem`, padrão o fim da lista, e `link`, o endereço que o "Abrir o site" abre quando é diferente da URL verificada) |
+| `PUT` | `/api/servicos/{id}` | Edita (`nome` e `url` obrigatórios; `intervaloSegundos`, `ativo`, `ordem` e `link` omitidos mantêm o valor atual; `link` `""` apaga o link; mudar só a ordem ou o link não pede uma verificação nova) |
 | `DELETE` | `/api/servicos/{id}` | Remove um serviço (e o histórico dele) |
 | `GET` | `/api/servicos/{id}/verificacoes?limite=50` | Últimas verificações, da mais recente (limite de 1 a 500) |
 | `POST` | `/api/servicos/{id}/verificar` | Verifica agora, sem esperar o intervalo |
@@ -244,7 +244,13 @@ cada minuto, sem fechar o que estiver aberto.
 - Os dias são os do horário de Brasília (o SQL agrupa com `at time zone 'America/Sao_Paulo'`): uma
   queda às 23h não vai para o "amanhã" do UTC.
 - Modo claro e escuro conforme o sistema; funciona no celular.
-- Os nomes entram na página como texto (`textContent`), nunca como HTML.
+- Identidade "Pulso" (monitor de sinais vitais): violeta nos destaques, Instrument Sans e Geist Mono
+  servidas pelo próprio Vigil (sem pedir nada ao Google), e no topo um monitor com uma batida por
+  serviço, na ordem da lista: a altura do pico é o tempo médio de resposta nas últimas 24 h, um
+  serviço fora do ar vira um trecho reto em vermelho e o número do canto é a mesma média da página.
+  Com "menos animação", a linha fica parada e inteira.
+- A ordem da lista (e do resumo semanal) vem do campo `ordem` de cada serviço.
+- Os nomes entram na página como texto (`textContent`, e no SVG do monitor por `createElementNS`), nunca como HTML.
 
 ## Publicação
 
@@ -321,7 +327,7 @@ alerta/          Alertas (quando avisar) · AlertaRepository (estado no banco) �
 seguranca/       SegurancaConfig (quem pode o quê) · FiltroDaChave (confere a chave)
                  FiltroDeEnderecos (bloqueia a rede interna: SSRF)
 erro/            TratadorDeErros (exceções -> respostas HTTP)
-static/          index.html (página de status) · logo.svg
+static/          index.html (página de status) · logo.svg · fontes/ (Instrument Sans e Geist Mono, OFL)
 deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer-backup.sh
 ```
 
@@ -340,3 +346,5 @@ deploy/          compose.yaml · Caddyfile · publicar.sh · backup.sh · trazer
 - [x] Detalhes por serviço, gráfico do tempo de resposta por hora e histórico de incidentes
 - [x] Leitura pelo navegador a partir do portfólio (CORS só com `GET`), que mostra um selo "no ar" em cada projeto
 - [x] Resumo da semana pelo Telegram toda segunda, sem repetir nem perder a semana
+- [x] Ordem própria da lista e link público separado da URL verificada (ex.: o Pursuit é verificado pelo `/saude`)
+- [x] Identidade visual própria ("Pulso"), com o monitor de batimentos desenhado pelos dados reais

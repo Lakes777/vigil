@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-<defs><mask id="m"><rect width="120" height="120" fill="white"/><path d="M20 54 L54 58 Q37 74 20 54Z" fill="black"/><path d="M100 54 L66 58 Q83 74 100 54Z" fill="black"/></mask></defs>
-<rect width="120" height="120" rx="14" fill="#1e2124"/>
-<g mask="url(#m)"><rect x="7.5" y="24" width="9" height="72" fill="#c9d1d3"/><rect x="19.5" y="30" width="9" height="70" fill="#c9d1d3"/><rect x="31.5" y="28" width="9" height="70" fill="#c9d1d3"/><rect x="43.5" y="22" width="9" height="78" fill="#c9d1d3"/><rect x="55.5" y="20" width="9" height="84" fill="#c9d1d3"/><rect x="67.5" y="26" width="9" height="72" fill="#c9d1d3"/><rect x="79.5" y="32" width="9" height="76" fill="#c9d1d3"/><rect x="91.5" y="18" width="9" height="78" fill="#c9d1d3"/><rect x="103.5" y="26" width="9" height="74" fill="#c9d1d3"/></g></svg>
+<!-- Logo do Vigil: a linha de um monitor de batimentos, em violeta, sobre o fundo escuro do projeto -->
+<rect width="120" height="120" rx="26" fill="#16151f"/>
+<path d="M14 64 H38 L46 50 L54 64 H60 L66 26 L76 96 L84 64 H106" fill="none" stroke="#9d8cff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

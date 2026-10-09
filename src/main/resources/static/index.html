@@ -6,36 +6,66 @@
 <title>Vigil · Status</title>
 <meta name="description" content="Status dos projetos de Lakes777: quais estão no ar, a disponibilidade nos últimos 30 dias, o tempo de resposta e as quedas.">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preload" href="fontes/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Fontes servidas pelo próprio Vigil (licença OFL em fontes/): sem pedir nada ao Google,
+     que veria o IP de cada visitante da página pública. Só o alfabeto latino, que cobre o português. */
+  @font-face { font-family: "Instrument Sans"; font-style: normal; font-weight: 400 700; font-display: swap;
+    src: url("fontes/instrument-sans.woff2") format("woff2"); }
+  @font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 400 600; font-display: swap;
+    src: url("fontes/geist-mono.woff2") format("woff2"); }
+
+  /* Identidade "Pulso": monitor de sinais vitais. Violeta nos destaques (a linha do batimento,
+     links, foco); verde, amarelo e vermelho continuam só para o status. Instrument Sans no texto
+     e Geist Mono nos números. Segue o tema do sistema (claro ou escuro). */
   :root {
-    --fundo: #f4f5f6; --cartao: #ffffff; --borda: #dfe2e5; --linha: #eceef0; --texto: #1e2124; --suave: #5f676e;
-    --vazio: #d5d9dd; --no-ar: #2f9e5b; --parcial: #d29b2a; --fora: #d0463b; --pausado: #8a9298; --destaque: #2f6fb5;
-    --dica-fundo: #1e2124; --dica-texto: #f1f3f4; --sombra: 0 6px 24px rgba(20, 24, 28, .16);
+    --fundo: #f5f4fa; --cartao: #ffffff; --borda: #e1dfec; --linha: #eceaf3; --texto: #1d1b26; --suave: #5f5c70;
+    --vazio: #d8d6e2; --no-ar: #2f9e5b; --parcial: #c48a1c; --fora: #d0463b; --pausado: #8a8799; --destaque: #6b56e0;
+    --dica-fundo: #1d1b26; --dica-texto: #f1f0f6; --sombra: 0 6px 24px rgba(20, 18, 30, .16);
+    --monitor: #ffffff; --grade: #eceaf3; --brilho: rgb(107 86 224 / .35);
+    --mono: "Geist Mono", ui-monospace, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --fundo: #16181a; --cartao: #1e2124; --borda: #2e3236; --linha: #272b2f; --texto: #e4e7e9; --suave: #9aa2a8;
-      --vazio: #33383d; --no-ar: #3fb36c; --parcial: #e0aa3e; --fora: #e5584c; --pausado: #7d858b; --destaque: #6aa4e6;
-      --dica-fundo: #e4e7e9; --dica-texto: #16181a; --sombra: 0 6px 24px rgba(0, 0, 0, .5);
+      --fundo: #0f0e17; --cartao: #16151f; --borda: #272536; --linha: #211f2e; --texto: #ecebf3; --suave: #9894ab;
+      --vazio: #2c2a3a; --no-ar: #3fb36c; --parcial: #e0aa3e; --fora: #e5584c; --pausado: #7d7a8f; --destaque: #9d8cff;
+      --dica-fundo: #ecebf3; --dica-texto: #0f0e17; --sombra: 0 6px 24px rgba(0, 0, 0, .5);
+      --monitor: #13121c; --grade: #221f30; --brilho: rgb(157 140 255 / .8);
     }
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--fundo); color: var(--texto);
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    font: 15px/1.5 "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 780px; margin: 0 auto; padding: 32px 16px 48px; }
   .so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--destaque); outline-offset: 2px; }
 
-  /* Topo */
-  header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-  header img { width: 44px; height: 44px; }
-  h1 { font-size: 22px; margin: 0; letter-spacing: .2px; }
+  /* Topo: o nome e o monitor. Cada batida da linha é um serviço; a altura é o tempo médio de
+     resposta dele nas últimas 24 h, e um serviço fora do ar vira um trecho reto em vermelho. */
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { width: 40px; height: 40px; }
+  h1 { font-size: 24px; margin: 0; font-weight: 700; }
   header p { margin: 0; color: var(--suave); font-size: 14px; }
+  .monitor { position: relative; height: 128px; margin: 0 0 16px; border: 1px solid var(--borda); border-radius: 12px;
+    overflow: hidden; background-color: var(--monitor);
+    background-image: linear-gradient(var(--grade) 1px, transparent 1px), linear-gradient(90deg, var(--grade) 1px, transparent 1px);
+    background-size: 24px 24px; background-position: -1px -1px; }
+  .monitor svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .monitor .linha-base { fill: none; stroke: var(--destaque); stroke-width: 2; opacity: .3; stroke-linejoin: round; }
+  .monitor .linha-viva { fill: none; stroke: var(--destaque); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round;
+    stroke-dasharray: 160 440; animation: correr 3.6s linear infinite; filter: drop-shadow(0 0 5px var(--brilho)); }
+  .monitor .reta-fora { fill: none; stroke: var(--fora); stroke-width: 2.5; }
+  .monitor .reta-sem-dados { fill: none; stroke: var(--pausado); stroke-width: 2.5; }
+  .monitor .rotulo-batida { fill: var(--suave); font: 10px var(--mono); }
+  @keyframes correr { to { stroke-dashoffset: -600; } }
+  .bpm { position: absolute; right: 12px; top: 8px; text-align: right; font-family: var(--mono); line-height: 1; }
+  .bpm b { color: var(--destaque); font-size: 26px; font-weight: 600; }
+  .bpm small { display: block; margin-top: 4px; font-size: 10px; color: var(--suave); letter-spacing: .1em; text-transform: uppercase; }
   h2 { font-size: 15px; margin: 32px 0 10px; }
 
-  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; }
   .ponto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--pausado); }
   .ponto.NO_AR { background: var(--no-ar); }
   .ponto.FORA { background: var(--fora); }
@@ -57,7 +87,7 @@
   .numeros-gerais { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 0; }
   .numeros-gerais div { padding: 12px 14px; }
   .numeros-gerais dt { font-size: 12px; color: var(--suave); }
-  .numeros-gerais dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .numeros-gerais dd { margin: 2px 0 0; font-family: var(--mono); font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
   /* Serviços */
   .lista { margin-top: 12px; }
@@ -73,7 +103,7 @@
   .resumo { grid-column: 1 / -1; font-size: 13px; color: var(--suave); font-variant-numeric: tabular-nums; }
   .corpo { padding: 0 16px 14px; }
   .barras { display: flex; gap: 2px; height: 30px; margin: 10px 0 4px; border-radius: 3px; cursor: default; }
-  .barras span { flex: 1; border-radius: 2px; background: var(--vazio); min-width: 0; transition: opacity .15s; }
+  .barras span { flex: 1; border-radius: 99px; background: var(--vazio); min-width: 0; transition: opacity .15s; }
   .barras .ok { background: var(--no-ar); }
   .barras .parcial { background: var(--parcial); }
   .barras .ruim { background: var(--fora); }
@@ -90,7 +120,7 @@
   .info a { color: var(--destaque); }
   .periodos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 18px; }
   .periodo { border: 1px solid var(--linha); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--suave); }
-  .periodo b { display: block; font-size: 17px; color: var(--texto); font-variant-numeric: tabular-nums; }
+  .periodo b { display: block; font-family: var(--mono); font-size: 17px; color: var(--texto); font-variant-numeric: tabular-nums; }
   .periodo span { display: block; font-variant-numeric: tabular-nums; }
   h3 { font-size: 13px; margin: 0; }
   .titulo-grafico { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
@@ -153,9 +183,14 @@
     .periodo { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 0 8px; }
     .periodo span ~ span { grid-column: 1 / -1; }
     .barras { gap: 1px; height: 26px; }
+    /* Esticado para caber, o nome embaixo de cada batida ficaria espremido: a lista já diz quem é quem */
+    .monitor .rotulo-batida { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
+    /* Parado, o trecho que corre pela linha ficaria cortado no meio: some, e a linha fica inteira */
+    .monitor .linha-viva { display: none; }
+    .monitor .linha-base { opacity: 1; }
   }
 </style>
 </head>
@@ -168,6 +203,13 @@
       <p>Status dos projetos de Lakes777</p>
     </div>
   </header>
+
+  <!-- Monitor: o batimento é desenhado pelo script com os números da api/status (enfeite: os
+       mesmos números aparecem por extenso logo abaixo) -->
+  <div class="monitor" aria-hidden="true">
+    <svg id="ecg" viewBox="0 0 780 128" preserveAspectRatio="none"></svg>
+    <div class="bpm"><b id="bpm">–</b><small>ms · média 24 h</small></div>
+  </div>
 
   <div class="geral cartao" id="geral" role="status">
     <span class="ponto"></span>
@@ -771,7 +813,8 @@
     // Para baixo, como na API: 99,996% não pode virar 100,00%
     document.getElementById("n-disponibilidade").textContent = total
       ? porcento.format(Math.floor((total - falhas) * 10000 / total) / 100) + "%" : "–";
-    document.getElementById("n-tempo").textContent = ms(tempo == null ? null : Math.round(tempo));
+    estado.tempoMedio = tempo == null ? null : Math.round(tempo); // o monitor do topo mostra o mesmo número
+    document.getElementById("n-tempo").textContent = ms(estado.tempoMedio);
     document.getElementById("n-quedas").textContent = inteiro.format(agrupar(estado.quedas).length);
   }
 
@@ -781,11 +824,61 @@
     return resposta.json();
   }
 
+  /* O batimento do monitor: uma batida por serviço ativo, da esquerda para a direita na ordem
+     da lista. A altura do pico acompanha o tempo médio de resposta nas últimas 24 h (o mais
+     lento chega perto do topo); um serviço fora do ar vira um trecho reto em vermelho, e um
+     sem dados ainda, um trecho reto apagado. Os nomes entram como texto (textContent). */
+  const SVG = "http://www.w3.org/2000/svg";
+  function noSvg(tag, atributos, texto) {
+    const no = document.createElementNS(SVG, tag);
+    for (const [nome, valor] of Object.entries(atributos)) no.setAttribute(nome, valor);
+    if (texto != null) no.textContent = texto;
+    return no;
+  }
+
+  function desenharPulso(status) {
+    const svg = document.getElementById("ecg");
+    const ativos = status.filter(s => s.situacao !== "PAUSADO");
+    // A mesma média do "Resposta média (24 h)", calculada no resumoGeral
+    document.getElementById("bpm").textContent = estado.tempoMedio == null ? "–" : inteiro.format(estado.tempoMedio);
+    const tempos = ativos.map(s => s.ultimas24h && s.ultimas24h.tempoMedioMs).filter(t => t != null);
+    const W = 780, BASE = 84, n = Math.max(ativos.length, 1), passo = W / (n + 1);
+    // A batida tem uns 62 px de largura: com muitos serviços ela encolhe para não encostar na vizinha
+    const k = Math.min(1, passo / 70);
+    const maior = Math.max(...tempos, 1);
+    let d = "M0 " + BASE;
+    const retas = [];
+    const rotulos = [];
+    ativos.forEach((s, i) => {
+      const x = passo * (i + 1);
+      const t = s.ultimas24h && s.ultimas24h.tempoMedioMs;
+      const de = x - 30 * k, ate = x + 32 * k;
+      if (s.situacao === "FORA" || t == null) {
+        retas.push({ d: `M${de} ${BASE} H${ate}`, classe: s.situacao === "FORA" ? "reta-fora" : "reta-sem-dados" });
+        d += " H" + ate;
+      } else {
+        const pico = 26 + 42 * (t / maior); // 26 a 68 px acima da linha
+        const p = (dx, dy) => ` L${x + dx * k} ${BASE + dy}`;
+        d += ` H${de}` + p(-22, -6) + p(-16, 0) + ` H${x - 8 * k}` + p(-4, 10) + ` L${x} ${BASE - pico}`
+          + p(5, 16) + p(10, 0) + ` H${x + 18 * k}` + p(26, -8) + p(32, 0);
+      }
+      rotulos.push(noSvg("text", { class: "rotulo-batida", x, y: BASE + 34, "text-anchor": "middle" }, s.nome));
+    });
+    d += " H" + W;
+    svg.replaceChildren(
+      noSvg("path", { class: "linha-base", d }),
+      noSvg("path", { class: "linha-viva", d, pathLength: 600 }),
+      ...retas.map(r => noSvg("path", { class: r.classe, d: r.d })),
+      // Com muitos serviços os nomes se encostariam: aí só a lista diz quem é quem
+      ...(passo >= 70 ? rotulos : []));
+  }
+
   async function carregar() {
     try {
       const [status, servicos, dias, quedas] = await Promise.all([json("api/status"), json("api/servicos"),
         json("api/status/dias?dias=" + DIAS), json("api/quedas?dias=" + DIAS)]);
-      estado.urls = new Map(servicos.map(s => [s.id, s.url]));
+      // "Abrir o site" vai para o link público quando há um (ex.: o Pursuit é verificado pelo /saude)
+      estado.urls = new Map(servicos.map(s => [s.id, s.link || s.url]));
       estado.quedas = quedas;
       const porServico = new Map();
       dias.forEach(d => {
@@ -811,6 +904,7 @@
       else lista.replaceChildren(...artigos);
 
       resumoGeral(status);
+      desenharPulso(status);
       montarIncidentes();
       document.getElementById("atualizado").textContent = "Atualizado às " + hora.format(new Date());
     } catch (erro) {
