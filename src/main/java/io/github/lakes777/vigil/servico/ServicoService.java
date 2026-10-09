@@ -26,7 +26,7 @@ public class ServicoService {
 
 	@Transactional(readOnly = true)
 	public List<ServicoResposta> listar() {
-		return repositorio.findAllByOrderByNomeAsc().stream().map(ServicoResposta::de).toList();
+		return repositorio.findAllByOrderByOrdemAscNomeAsc().stream().map(ServicoResposta::de).toList();
 	}
 
 	@Transactional(readOnly = true)
@@ -41,8 +41,14 @@ public class ServicoService {
 			throw new NomeEmUsoException(nome);
 		}
 		validarUrl(entrada.url());
+		String link = entrada.linkOu(null);
+		if (link != null) {
+			validarUrl(link);
+		}
+		// Sem ordem, vai para o fim da lista (até o teto que a própria API aceita num PUT)
+		int ordem = entrada.ordemOu(Math.min(repositorio.maiorOrdem() + 1, ServicoEntrada.ORDEM_MAXIMA));
 		Servico servico = new Servico(nome, entrada.url(), entrada.intervaloOu(ServicoEntrada.INTERVALO_PADRAO),
-				entrada.ativoOu(true));
+				entrada.ativoOu(true), ordem, link);
 		return ServicoResposta.de(repositorio.save(servico));
 	}
 
@@ -59,8 +65,19 @@ public class ServicoService {
 		if (pausou || !servico.getUrl().equals(entrada.url())) {
 			repositorio.esquecerAviso(id);
 		}
-		servico.alterar(nome, entrada.url(), entrada.intervaloOu(servico.getIntervaloSegundos()),
-				entrada.ativoOu(servico.isAtivo()));
+		String link = entrada.linkOu(servico.getLink());
+		if (link != null) {
+			validarUrl(link);
+		}
+		int intervalo = entrada.intervaloOu(servico.getIntervaloSegundos());
+		boolean ativo = entrada.ativoOu(servico.isAtivo());
+		// Só a ordem ou o link mudaram: é só a página, sem verificar de novo
+		boolean mudouVerificacao = !nome.equals(servico.getNome()) || !entrada.url().equals(servico.getUrl())
+				|| intervalo != servico.getIntervaloSegundos() || ativo != servico.isAtivo();
+		if (mudouVerificacao) {
+			servico.alterar(nome, entrada.url(), intervalo, ativo);
+		}
+		servico.mudarApresentacao(entrada.ordemOu(servico.getOrdem()), link);
 		return ServicoResposta.de(servico);
 	}
 

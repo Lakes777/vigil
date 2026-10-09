@@ -32,6 +32,14 @@ public class Servico {
 	@Column(nullable = false)
 	private boolean ativo;
 
+	/** Posição na página: a menor primeiro (empate, pelo nome). */
+	@Column(nullable = false)
+	private int ordem;
+
+	/** O que o "Abrir o site" abre; nulo = a própria URL verificada. */
+	@Column(length = 500)
+	private String link;
+
 	@CreationTimestamp
 	@Column(name = "criado_em", nullable = false, updatable = false)
 	private Instant criadoEm;
@@ -43,8 +51,20 @@ public class Servico {
 	protected Servico() {
 	}
 
+	/** Sem ordem nem link (o começo da lista e o "Abrir o site" na própria URL). */
 	public Servico(String nome, String url, int intervaloSegundos, boolean ativo) {
+		this(nome, url, intervaloSegundos, ativo, 0, null);
+	}
+
+	public Servico(String nome, String url, int intervaloSegundos, boolean ativo, int ordem, String link) {
 		alterar(nome, url, intervaloSegundos, ativo);
+		mudarApresentacao(ordem, link);
+	}
+
+	/** A ordem e o link só mudam a página: não pedem uma verificação nova. */
+	public void mudarApresentacao(int ordem, String link) {
+		this.ordem = ordem;
+		this.link = link;
 	}
 
 	public void alterar(String nome, String url, int intervaloSegundos, boolean ativo) {
@@ -74,6 +94,14 @@ public class Servico {
 
 	public boolean isAtivo() {
 		return ativo;
+	}
+
+	public int getOrdem() {
+		return ordem;
+	}
+
+	public String getLink() {
+		return link;
 	}
 
 	public Instant getCriadoEm() {

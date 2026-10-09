@@ -172,6 +172,15 @@ class DisponibilidadeTest {
 	}
 
 	@Test
+	void statusSaiPelaOrdemEDepoisPeloNome() {
+		servicos.save(new Servico("Alfa", "https://alfa.exemplo.com", 300, true, 3, null));
+		servicos.save(new Servico("Zeta", "https://zeta.exemplo.com", 300, true, 1, null));
+		servicos.save(new Servico("Beta", "https://beta.exemplo.com", 300, true, 3, null));
+
+		assertThat(disponibilidade.status()).extracting(StatusServico::nome).containsExactly("Zeta", "Alfa", "Beta");
+	}
+
+	@Test
 	void situacaoDeCadaServico() {
 		Servico noAr = servico("A no ar", true);
 		noAr(noAr, horas(1), 100);

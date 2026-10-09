@@ -4,11 +4,12 @@ import java.time.Instant;
 
 /** O JSON que a API devolve. Separado da entidade para o banco poder mudar sem quebrar a API. */
 public record ServicoResposta(Long id, String nome, String url, int intervaloSegundos, boolean ativo,
-		Instant criadoEm) {
+		Instant criadoEm, int ordem, String link) {
 
 	static ServicoResposta de(Servico servico) {
 		return new ServicoResposta(servico.getId(), servico.getNome(), servico.getUrl(),
-				servico.getIntervaloSegundos(), servico.isAtivo(), servico.getCriadoEm());
+				servico.getIntervaloSegundos(), servico.isAtivo(), servico.getCriadoEm(), servico.getOrdem(),
+				servico.getLink());
 	}
 
 }

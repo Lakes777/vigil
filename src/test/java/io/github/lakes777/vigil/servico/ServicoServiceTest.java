@@ -107,7 +107,7 @@ class ServicoServiceTest {
 
 	@Test
 	void listarConverteParaResposta() {
-		when(repositorio.findAllByOrderByNomeAsc()).thenReturn(List.of(new Servico("Tidy", "https://t.com", 300, true)));
+		when(repositorio.findAllByOrderByOrdemAscNomeAsc()).thenReturn(List.of(new Servico("Tidy", "https://t.com", 300, true)));
 
 		assertThat(service.listar()).extracting(ServicoResposta::nome).containsExactly("Tidy");
 	}
@@ -128,6 +128,75 @@ class ServicoServiceTest {
 
 		assertThatThrownBy(() -> service.remover(3L)).isInstanceOf(ServicoNaoEncontradoException.class);
 		verify(repositorio, never()).delete(any());
+	}
+
+	@Test
+	void criarSemOrdemVaiParaOFimDaListaESemLink() {
+		when(repositorio.maiorOrdem()).thenReturn(4);
+
+		ServicoResposta criado = service.criar(new ServicoEntrada("Pursuit", "https://p.com/saude", null, null));
+
+		assertThat(criado.ordem()).isEqualTo(5);
+		assertThat(criado.link()).isNull();
+	}
+
+	@Test
+	void criarComOrdemELinkGuardaOsDois() {
+		ServicoResposta criado = service.criar(
+				new ServicoEntrada("Pursuit", "https://p.com/saude", null, null, 2, "https://p.com"));
+
+		assertThat(criado.ordem()).isEqualTo(2);
+		assertThat(criado.link()).isEqualTo("https://p.com");
+	}
+
+	@Test
+	void atualizarSemOrdemNemLinkMantemOsDois() {
+		Servico existente = new Servico("Pursuit", "https://p.com/saude", 300, true, 4, "https://p.com");
+		when(repositorio.findById(6L)).thenReturn(Optional.of(existente));
+
+		ServicoResposta atualizado = service.atualizar(6L, new ServicoEntrada("Pursuit", "https://p.com/saude", null, null));
+
+		assertThat(atualizado.ordem()).isEqualTo(4);
+		assertThat(atualizado.link()).isEqualTo("https://p.com");
+	}
+
+	@Test
+	void criarSemOrdemNaoPassaDoTeto() {
+		when(repositorio.maiorOrdem()).thenReturn(1000);
+
+		assertThat(service.criar(new ServicoEntrada("Z", "https://z.com", null, null)).ordem()).isEqualTo(1000);
+	}
+
+	@Test
+	void mudarSoAOrdemNaoPedeVerificacaoNova() {
+		Servico existente = new Servico("Pursuit", "https://p.com/saude", 300, true, 4, null);
+		java.time.Instant antes = existente.getProximaVerificacao();
+		when(repositorio.findById(6L)).thenReturn(Optional.of(existente));
+
+		service.atualizar(6L, new ServicoEntrada("Pursuit", "https://p.com/saude", null, null, 1, null));
+
+		assertThat(existente.getOrdem()).isEqualTo(1);
+		assertThat(existente.getProximaVerificacao()).isEqualTo(antes);
+	}
+
+	@Test
+	void atualizarComLinkVazioApagaOLink() {
+		Servico existente = new Servico("Pursuit", "https://p.com/saude", 300, true, 4, "https://p.com");
+		when(repositorio.findById(6L)).thenReturn(Optional.of(existente));
+
+		ServicoResposta atualizado = service.atualizar(6L,
+				new ServicoEntrada("Pursuit", "https://p.com/saude", null, null, 1, ""));
+
+		assertThat(atualizado.ordem()).isEqualTo(1);
+		assertThat(atualizado.link()).isNull();
+	}
+
+	@Test
+	void linkParaEnderecoInternoEhRecusado() {
+		assertThatThrownBy(() -> service.criar(
+				new ServicoEntrada("X", "https://x.com", null, null, null, "http://localhost:8080")))
+				.isInstanceOf(UrlInvalidaException.class);
+		verify(repositorio, never()).save(any());
 	}
 
 }

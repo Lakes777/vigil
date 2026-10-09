@@ -39,7 +39,7 @@ public class DisponibilidadeRepository {
 			    order by feita_em desc, id desc
 			    limit 1
 			) ultima on true
-			order by s.nome
+			order by s.ordem, s.nome
 			""".formatted(contas("24h", "24 hours"), contas("7d", "7 days"), contas("30d", "30 days"));
 
 	/**
@@ -121,7 +121,7 @@ public class DisponibilidadeRepository {
 			from servico s
 			left join verificacao v on v.servico_id = s.id and v.feita_em >= :desde and v.feita_em < :ate
 			group by s.id
-			order by s.nome
+			order by s.ordem, s.nome
 			""";
 
 	private final JdbcClient jdbc;

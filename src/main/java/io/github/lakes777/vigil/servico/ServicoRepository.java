@@ -14,7 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public interface ServicoRepository extends JpaRepository<Servico, Long> {
 
-	List<Servico> findAllByOrderByNomeAsc();
+	List<Servico> findAllByOrderByOrdemAscNomeAsc();
+
+	/** A maior ordem em uso (0 sem serviços): um serviço novo entra logo depois. */
+	@Query("select coalesce(max(s.ordem), 0) from Servico s")
+	int maiorOrdem();
 
 	// lower() igual ao do índice servico_nome_unico (o IgnoreCase do Spring Data usaria upper())
 	@Query("select count(s) > 0 from Servico s where lower(s.nome) = lower(:nome)")

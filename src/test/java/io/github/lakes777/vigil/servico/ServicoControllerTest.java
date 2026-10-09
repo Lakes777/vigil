@@ -77,16 +77,52 @@ class ServicoControllerTest {
 	}
 
 	@Test
-	void listaEmOrdemAlfabetica() throws Exception {
-		criarERetornarId("Spendwise");
-		criarERetornarId("Coursebook");
-		criarERetornarId("Hanami");
+	void listaPelaOrdemEDepoisPeloNome() throws Exception {
+		criarERetornarId("Spendwise"); // sem ordem: o fim da lista (1)
+		criar("{\"nome\":\"Coursebook\",\"url\":\"https://exemplo.com\",\"ordem\":1}").andExpect(status().isCreated());
+		criarERetornarId("Hanami"); // depois da maior ordem (2)
 
 		mvc.perform(get("/api/servicos"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(3)))
 				.andExpect(jsonPath("$[0].nome").value("Coursebook"))
-				.andExpect(jsonPath("$[2].nome").value("Spendwise"));
+				.andExpect(jsonPath("$[1].nome").value("Spendwise"))
+				.andExpect(jsonPath("$[2].nome").value("Hanami"))
+				.andExpect(jsonPath("$[2].ordem").value(2));
+	}
+
+	@Test
+	void ordemELinkPeloJson() throws Exception {
+		String corpo = criar("{\"nome\":\"Pursuit\",\"url\":\"https://p.exemplo.com/saude\",\"ordem\":4,"
+				+ "\"link\":\"https://p.exemplo.com\"}")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ordem").value(4))
+				.andExpect(jsonPath("$.link").value("https://p.exemplo.com"))
+				.andReturn().getResponse().getContentAsString();
+		long id = ((Number) JsonPath.read(corpo, "$.id")).longValue();
+
+		// Sem ordem nem link no PUT: os dois ficam
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"nome\":\"Pursuit\",\"url\":\"https://p.exemplo.com/saude\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ordem").value(4))
+				.andExpect(jsonPath("$.link").value("https://p.exemplo.com"));
+
+		// Link "" apaga: o "Abrir o site" volta para a URL
+		mvc.perform(put("/api/servicos/" + id).with(comChave(chave)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"nome\":\"Pursuit\",\"url\":\"https://p.exemplo.com/saude\",\"link\":\"\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.link").isEmpty());
+	}
+
+	@Test
+	void recusaOrdemForaDoLimiteELinkSemHttp() throws Exception {
+		criar("{\"nome\":\"X\",\"url\":\"https://x.exemplo.com\",\"ordem\":-1}").andExpect(status().isBadRequest());
+		criar("{\"nome\":\"X\",\"url\":\"https://x.exemplo.com\",\"ordem\":1001}").andExpect(status().isBadRequest());
+		criar("{\"nome\":\"X\",\"url\":\"https://x.exemplo.com\",\"link\":\"javascript:alert(1)\"}")
+				.andExpect(status().isBadRequest());
+		criar("{\"nome\":\"X\",\"url\":\"https://x.exemplo.com\",\"link\":\" https://x.com\"}")
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
